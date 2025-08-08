@@ -176,6 +176,10 @@ install_python_deps() {
 create_user() {
     log "Überspringe System-Benutzer-Erstellung - nur Web-Interface Benutzer werden verwendet"
     # Kein System-Benutzer wird erstellt, nur Web-Interface Benutzer im GUI
+    # Alle useradd Befehle wurden entfernt - System läuft als root
+
+    # Falls noch useradd Befehle vorhanden waren, werden sie hier entfernt:
+    # useradd --system --home-dir /opt/jetdns --shell /bin/false jetdns  # ENTFERNT
 }
 
 # Verzeichnisse und Berechtigungen einrichten
@@ -402,7 +406,7 @@ check_existing_installation() {
             log "Entferne vorhandene Installation..."
             rm -rf /opt/jetdns
             rm -rf /etc/jetdns
-            # Kein System-Benutzer zu löschen, da keiner erstellt wurde
+            # Keine System-Benutzer werden verwendet oder gelöscht
         else
             error "Installation abgebrochen"
             exit 1
