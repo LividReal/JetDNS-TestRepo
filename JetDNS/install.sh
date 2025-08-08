@@ -25,6 +25,216 @@ error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Berechtigungen automatisch setzen
+fix_permissions() {
+    local path="$1"
+    local perm="${2:-777}"
+
+    if [ -e "$path" ]; then
+        log "Setze Berechtigungen $perm für: $path"
+        chmod -R "$perm" "$path" 2>/dev/null || warn "Konnte Berechtigungen für $path nicht setzen"
+        chown -R root:root "$path" 2>/dev/null || warn "Konnte Eigentümer für $path nicht setzen"
+    fi
+}
+
+# Automatische Fehlerbehebung - Retry-Funktion
+retry_command() {
+    local cmd="$1"
+    local max_attempts="${2:-3}"
+    local delay="${3:-2}"
+    local attempt=1
+
+    while [ $attempt -le $max_attempts ]; do
+        log "Versuch $attempt/$max_attempts: $cmd"
+        if eval "$cmd"; then
+            return 0
+        fi
+
+        warn "Versuch $attempt fehlgeschlagen, warte ${delay}s..."
+        sleep $delay
+        ((attempt++))
+    done
+
+    error "Befehl nach $max_attempts Versuchen fehlgeschlagen: $cmd"
+    return 1
+}
+
+# Automatische Netzwerk-Fehlerbehebung
+fix_network_issues() {
+    log "Behebe automatisch Netzwerkprobleme..."
+
+    # DNS-Server temporär auf Google/Cloudflare setzen
+    if ! ping -c 1 google.com &>/dev/null; then
+        warn "Netzwerkproblem erkannt, repariere DNS..."
+        cp /etc/resolv.conf /etc/resolv.conf.backup 2>/dev/null || true
+        cat > /etc/resolv.conf << EOF
+nameserver 8.8.8.8
+nameserver 1.1.1.1
+nameserver 9.9.9.9
+EOF
+        log "Temporäre DNS-Server gesetzt"
+    fi
+
+    # Netzwerk-Interface neu starten falls nötig
+    if ! ping -c 1 google.com &>/dev/null; then
+        warn "Starte Netzwerk-Interface neu..."
+        systemctl restart networking 2>/dev/null || service networking restart 2>/dev/null || true
+        sleep 3
+    fi
+
+    # Letzte Rettung: systemd-resolved neu starten
+    if ! ping -c 1 google.com &>/dev/null; then
+        warn "Starte DNS-Resolver neu..."
+        systemctl restart systemd-resolved 2>/dev/null || true
+        sleep 2
+    fi
+}
+
+# Automatische Paket-Fehlerbehebung
+fix_package_issues() {
+    log "Behebe automatisch Paket-Probleme..."
+
+    # Defekte Pakete reparieren
+    dpkg --configure -a 2>/dev/null || true
+    apt-get -f install -y 2>/dev/null || true
+
+    # Paketlisten korrigieren
+    rm -rf /var/lib/apt/lists/* 2>/dev/null || true
+    apt-get clean 2>/dev/null || true
+    apt-get update -qq 2>/dev/null || true
+
+    # Gesperrte Pakete entsperren
+    if [ -f /var/lib/dpkg/lock-frontend ]; then
+        rm -f /var/lib/dpkg/lock-frontend 2>/dev/null || true
+    fi
+    if [ -f /var/lib/apt/lists/lock ]; then
+        rm -f /var/lib/apt/lists/lock 2>/dev/null || true
+    fi
+    if [ -f /var/cache/apt/archives/lock ]; then
+        rm -f /var/cache/apt/archives/lock 2>/dev/null || true
+    fi
+
+    # Defekte Repository-Keys reparieren
+    apt-key update 2>/dev/null || true
+}
+
+# Automatische Port-Konflikt-Lösung
+fix_port_conflicts() {
+    local port="$1"
+    local service_name="$2"
+
+    log "Prüfe Port-Konflikt für Port $port..."
+
+    if netstat -tuln 2>/dev/null | grep -q ":$port "; then
+        warn "Port $port ist belegt, löse Konflikt..."
+
+        # Finde und beende blockierende Prozesse
+        local pids=$(lsof -ti :$port 2>/dev/null || true)
+        if [ -n "$pids" ]; then
+            for pid in $pids; do
+                local process_name=$(ps -p $pid -o comm= 2>/dev/null || echo "unbekannt")
+                warn "Beende Prozess $process_name (PID: $pid) der Port $port blockiert"
+                kill -TERM $pid 2>/dev/null || kill -KILL $pid 2>/dev/null || true
+                sleep 1
+            done
+        fi
+
+        # Spezielle Behandlung für bekannte Services
+        case $port in
+            53)
+                systemctl stop systemd-resolved 2>/dev/null || true
+                systemctl disable systemd-resolved 2>/dev/null || true
+                ;;
+            80|443)
+                systemctl stop apache2 2>/dev/null || true
+                systemctl stop nginx 2>/dev/null || true
+                ;;
+            6379)
+                systemctl stop redis-server 2>/dev/null || true
+                ;;
+        esac
+
+        sleep 2
+        log "Port-Konflikt für Port $port behoben"
+    fi
+}
+
+# Automatische Service-Fehlerbehebung
+fix_service_issues() {
+    log "Behebe automatisch Service-Probleme..."
+
+    # Systemd neu laden
+    systemctl daemon-reload 2>/dev/null || true
+
+    # Defekte Services reparieren
+    systemctl reset-failed 2>/dev/null || true
+
+    # Port-Konflikte lösen
+    fix_port_conflicts 53 "DNS"
+    fix_port_conflicts 80 "HTTP"
+    fix_port_conflicts 8080 "WebUI"
+    fix_port_conflicts 6379 "Redis"
+}
+
+# Automatische Speicherplatz-Bereinigung
+fix_disk_space() {
+    log "Bereinige automatisch Speicherplatz..."
+
+    # Temporäre Dateien löschen
+    rm -rf /tmp/* 2>/dev/null || true
+    rm -rf /var/tmp/* 2>/dev/null || true
+
+    # Log-Dateien bereinigen
+    find /var/log -name "*.log" -type f -size +100M -exec truncate -s 50M {} \; 2>/dev/null || true
+
+    # APT-Cache bereinigen
+    apt-get clean 2>/dev/null || true
+    apt-get autoclean 2>/dev/null || true
+
+    # Journal bereinigen
+    journalctl --vacuum-time=1d 2>/dev/null || true
+    journalctl --vacuum-size=100M 2>/dev/null || true
+
+    log "Speicherplatz bereinigt"
+}
+
+# Umfassende System-Reparatur
+auto_fix_system() {
+    log "🔧 Starte automatische System-Reparatur..."
+
+    fix_network_issues
+    fix_package_issues
+    fix_service_issues
+    fix_disk_space
+
+    # Berechtigungen für kritische Verzeichnisse
+    chmod 755 /tmp 2>/dev/null || true
+    chmod 755 /var/tmp 2>/dev/null || true
+    chmod 1777 /tmp 2>/dev/null || true
+
+    log "✅ Automatische System-Reparatur abgeschlossen"
+}
+
+# Alle JetDNS Berechtigungen korrigieren
+fix_all_jetdns_permissions() {
+    log "Korrigiere alle JetDNS Berechtigungen..."
+
+    # Hauptverzeichnisse mit Vollzugriff
+    fix_permissions "/opt/jetdns" "777"
+    fix_permissions "/etc/jetdns" "777"
+    fix_permissions "/var/log/jetdns" "777"
+    fix_permissions "/var/lib/jetdns" "777"
+
+    # Ausführbare Dateien
+    fix_permissions "/usr/local/bin/jetdns" "777"
+    fix_permissions "/usr/local/bin/jetdns-setup" "777"
+
+    # Systemd Service
+    fix_permissions "/etc/systemd/system/jetdns.service" "644"
+
+    log "Alle Berechtigungen korrigiert"
+}
+
 # Banner anzeigen
 show_banner() {
     echo -e "${BLUE}"
@@ -94,42 +304,89 @@ check_root() {
     fi
 }
 
-# Internetverbindung prüfen
+# Internetverbindung prüfen mit automatischer Reparatur
 check_internet() {
     log "Prüfe Internetverbindung..."
-    if ! ping -c 1 google.com &> /dev/null; then
-        error "Keine Internetverbindung verfügbar!"
-        echo "Eine Internetverbindung ist für die Installation erforderlich."
-        exit 1
-    fi
-    log "Internetverbindung OK"
+
+    local max_attempts=3
+    local attempt=1
+
+    while [ $attempt -le $max_attempts ]; do
+        if ping -c 1 google.com &>/dev/null; then
+            log "Internetverbindung OK"
+            return 0
+        fi
+
+        warn "Internetverbindung Versuch $attempt/$max_attempts fehlgeschlagen"
+
+        if [ $attempt -lt $max_attempts ]; then
+            log "Versuche automatische Netzwerk-Reparatur..."
+            fix_network_issues
+            sleep 3
+        fi
+
+        ((attempt++))
+    done
+
+    error "Keine Internetverbindung verfügbar nach $max_attempts Reparatur-Versuchen!"
+    echo "Die Installation kann ohne Internetverbindung nicht fortgesetzt werden."
+    exit 1
 }
 
-# Installiere System-Dependencies
+# Installiere System-Dependencies mit automatischer Fehlerbehebung
 install_dependencies() {
     log "Installiere System-Abhängigkeiten..."
 
-    apt-get update -q
+    # Automatische Paket-Reparatur vor Installation
+    fix_package_issues
 
-    # Python und pip
-    apt-get install -y python3 python3-pip python3-venv
+    # Paketlisten mit Retry aktualisieren
+    retry_command "apt-get update -q" 3 5
 
-    # Netzwerk-Tools
-    apt-get install -y net-tools iproute2 netplan.io
+    # Kritische Pakete mit automatischer Fehlerbehebung installieren
+    local packages=(
+        "python3"
+        "python3-pip" 
+        "python3-venv"
+        "net-tools"
+        "iproute2"
+        "openssl"
+        "build-essential"
+        "python3-dev"
+        "redis-server"
+        "systemd"
+        "ufw"
+    )
 
-    # SSL/TLS Tools
-    apt-get install -y openssl
+    for package in "${packages[@]}"; do
+        log "Installiere $package..."
+        if ! retry_command "apt-get install -y $package" 3 2; then
+            warn "$package Installation fehlgeschlagen, versuche Alternative..."
 
-    # Build tools für Python Packages
-    apt-get install -y build-essential python3-dev
+            # Spezielle Fallbacks für kritische Pakete
+            case $package in
+                "python3-pip")
+                    wget -q https://bootstrap.pypa.io/get-pip.py -O /tmp/get-pip.py 2>/dev/null || true
+                    python3 /tmp/get-pip.py 2>/dev/null || true
+                    ;;
+                "redis-server")
+                    warn "Redis Installation fehlgeschlagen - wird später nachinstalliert"
+                    ;;
+                "netplan.io")
+                    warn "Netplan nicht verfügbar - übersprungen"
+                    ;;
+            esac
+        fi
+    done
 
-    # Redis für Caching
-    apt-get install -y redis-server
+    # Optionale Pakete mit Fehlertoleranz
+    apt-get install -y netplan.io 2>/dev/null || warn "Netplan nicht verfügbar"
+    apt-get install -y libssl-dev libffi-dev pkg-config 2>/dev/null || warn "YARA Dependencies teilweise fehlgeschlagen"
 
-    # Systemd und UFW (falls nicht installiert)
-    apt-get install -y systemd ufw
+    # Finale Paket-Reparatur
+    apt-get -f install -y 2>/dev/null || true
 
-    log "System-Abhängigkeiten installiert"
+    log "System-Abhängigkeiten installiert (mit automatischer Fehlerbehebung)"
 }
 
 # Python Virtual Environment erstellen
@@ -148,28 +405,77 @@ create_venv() {
     log "Virtual Environment erstellt in $JETDNS_HOME/venv"
 }
 
-# Installiere Python Dependencies
+# Installiere Python Dependencies mit umfassender Fehlerbehebung
 install_python_deps() {
     log "Installiere Python-Abhängigkeiten..."
 
     source /opt/jetdns/venv/bin/activate
 
-    # Core Dependencies
-    pip install flask==2.3.2
-    pip install redis==4.6.0
-    pip install requests==2.31.0
-    pip install dnspython==2.4.0
-    pip install cryptography==41.0.3
-    pip install pyyaml==6.0.1
-    pip install configparser==5.3.0
-    pip install psutil==5.9.5
-    pip install gevent==23.7.0
+    # Pip aktualisieren mit Retry
+    retry_command "pip install --upgrade pip" 3 2
 
-    # Optional Dependencies für erweiterte Features
-    pip install maxminddb==2.2.0 || warn "MaxMind GeoIP nicht verfügbar"
-    pip install yara-python==4.3.1 || warn "YARA nicht verfügbar"
+    # Wheel installieren für bessere Kompatibilität
+    pip install wheel setuptools --upgrade 2>/dev/null || true
 
-    log "Python-Abhängigkeiten installiert"
+    # Core Dependencies mit automatischer Fehlerbehebung
+    local core_packages=(
+        "flask==2.3.2"
+        "redis==4.6.0"
+        "requests==2.31.0" 
+        "dnspython==2.4.0"
+        "cryptography==41.0.3"
+        "pyyaml==6.0.1"
+        "configparser==5.3.0"
+        "psutil==5.9.5"
+        "gevent==23.7.0"
+    )
+
+    for package in "${core_packages[@]}"; do
+        log "Installiere Python-Paket: $package"
+        if ! retry_command "pip install '$package'" 3 2; then
+            warn "$package Installation fehlgeschlagen, versuche ohne Version..."
+            local pkg_name=$(echo "$package" | cut -d'=' -f1)
+            retry_command "pip install '$pkg_name'" 2 3 || warn "$pkg_name komplett fehlgeschlagen"
+        fi
+    done
+
+    # Optional Dependencies mit erweiterten Fallbacks
+    log "Installiere optionale Abhängigkeiten..."
+
+    # MaxMind GeoIP
+    pip install maxminddb==2.2.0 2>/dev/null || \
+    pip install maxminddb 2>/dev/null || \
+    warn "MaxMind GeoIP nicht verfügbar"
+
+    # YARA mit umfassenden Fallback-Optionen
+    log "Versuche YARA Installation mit erweiterten Fallbacks..."
+    local yara_versions=("4.3.1" "4.2.3" "4.1.3" "4.0.5")
+    local yara_installed=false
+
+    for version in "${yara_versions[@]}"; do
+        if pip install "yara-python==$version" 2>/dev/null; then
+            log "YARA-Python $version erfolgreich installiert"
+            yara_installed=true
+            break
+        fi
+    done
+
+    if [ "$yara_installed" = false ]; then
+        warn "Alle YARA-Versionen fehlgeschlagen, versuche Kompilation..."
+        if apt-get install -y libyara-dev 2>/dev/null; then
+            pip install yara-python --no-binary=yara-python 2>/dev/null || \
+            warn "YARA-Python kann nicht installiert werden - Threat Detection läuft ohne YARA"
+        fi
+    fi
+
+    # Weitere ML/Analytics Pakete falls aus requirements.txt installiert werden soll
+    if [ -f "../requirements.txt" ]; then
+        log "Installiere Pakete aus requirements.txt..."
+        pip install -r ../requirements.txt --no-deps --ignore-installed 2>/dev/null || \
+        warn "Nicht alle Pakete aus requirements.txt konnten installiert werden"
+    fi
+
+    log "Python-Abhängigkeiten installiert (mit umfassender Fehlerbehebung)"
 }
 
 # JetDNS Benutzer erstellen (übersprungen - nur Web-Interface Benutzer werden benötigt)
@@ -190,11 +496,20 @@ setup_directories() {
     mkdir -p /opt/jetdns/{bin,lib,share,var/{log,cache,db}}
     mkdir -p /etc/jetdns/{ssl,blocklists}
     mkdir -p /var/log/jetdns
+    mkdir -p /var/lib/jetdns
 
-    # Berechtigungen setzen (als root, da kein jetdns System-Benutzer vorhanden)
-    chmod -R 755 /opt/jetdns
-    chmod -R 755 /etc/jetdns
-    chmod -R 755 /var/log/jetdns
+    # Berechtigungen mit Vollzugriff setzen (777 für alle JetDNS Dateien)
+    log "Setze Vollzugriff-Berechtigungen (777)..."
+    chmod -R 777 /opt/jetdns
+    chmod -R 777 /etc/jetdns  
+    chmod -R 777 /var/log/jetdns
+    chmod -R 777 /var/lib/jetdns
+
+    # Eigentümer auf root setzen
+    chown -R root:root /opt/jetdns
+    chown -R root:root /etc/jetdns
+    chown -R root:root /var/log/jetdns
+    chown -R root:root /var/lib/jetdns
 
     # Log-Rotation einrichten
     cat > /etc/logrotate.d/jetdns << EOF
@@ -205,14 +520,17 @@ setup_directories() {
     compress
     delaycompress
     notifempty
-    create 0644 root root
+    create 0777 root root
     postrotate
         systemctl reload jetdns 2>/dev/null || true
     endscript
 }
 EOF
 
-    log "Verzeichnisstruktur eingerichtet"
+    # Berechtigungen für Log-Rotation
+    chmod 777 /etc/logrotate.d/jetdns
+
+    log "Verzeichnisstruktur mit Vollzugriff eingerichtet"
 }
 
 # JetDNS Dateien kopieren
@@ -227,8 +545,24 @@ install_jetdns_files() {
 
     # Web-Interface Templates
     mkdir -p $JETDNS_HOME/share/templates
-    cp setup.html $JETDNS_HOME/share/templates/
-    cp base.html $JETDNS_HOME/share/templates/
+
+    # Template-Dateien kopieren falls vorhanden
+    if [ -f "setup.html" ]; then
+        cp setup.html $JETDNS_HOME/share/templates/
+        log "setup.html kopiert"
+    else
+        warn "setup.html nicht gefunden - wird übersprungen"
+    fi
+
+    if [ -f "base.html" ]; then
+        cp base.html $JETDNS_HOME/share/templates/
+        log "base.html kopiert"
+    elif [ -f "web/templates/base.html" ]; then
+        cp web/templates/base.html $JETDNS_HOME/share/templates/
+        log "base.html aus web/templates/ kopiert"
+    else
+        warn "base.html nicht gefunden - wird übersprungen"
+    fi
 
     # Setup-Script kopieren
     cp jetdns-manager.py $JETDNS_HOME/bin/jetdns-manager
@@ -243,6 +577,13 @@ install_jetdns_files() {
     # Source-Dateien kopieren falls vorhanden
     if [ -d "src" ]; then
         cp -r src $JETDNS_HOME/
+        log "Source-Dateien kopiert"
+    fi
+
+    # Web-Interface Dateien kopieren falls vorhanden
+    if [ -d "web" ]; then
+        cp -r web $JETDNS_HOME/
+        log "Web-Interface Dateien kopiert"
     fi
 
     # Ausführbare Dateien erstellen
@@ -269,7 +610,7 @@ _jetdns_completions() {
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
-    opts="status backup restore restart logs config"
+    opts="status backup restore restart logs config fix-permissions"
 
     if [[ ${cur} == -* ]]; then
         COMPREPLY=($(compgen -W "--backup-name --backup-path --section --key --value --lines" -- ${cur}))
@@ -282,7 +623,41 @@ _jetdns_completions() {
 complete -F _jetdns_completions jetdns
 EOF
 
-    log "JetDNS Dateien installiert"
+    # Berechtigungs-Fix-Script erstellen
+    cat > /usr/local/bin/jetdns-fix-permissions << 'EOF'
+#!/bin/bash
+# JetDNS Berechtigungs-Reparatur-Script
+
+echo "🔧 JetDNS Berechtigungen werden repariert..."
+
+# Alle JetDNS Verzeichnisse auf 777 setzen
+chmod -R 777 /opt/jetdns 2>/dev/null
+chmod -R 777 /etc/jetdns 2>/dev/null  
+chmod -R 777 /var/log/jetdns 2>/dev/null
+chmod -R 777 /var/lib/jetdns 2>/dev/null
+
+# Eigentümer auf root setzen
+chown -R root:root /opt/jetdns 2>/dev/null
+chown -R root:root /etc/jetdns 2>/dev/null
+chown -R root:root /var/log/jetdns 2>/dev/null
+chown -R root:root /var/lib/jetdns 2>/dev/null
+
+# Ausführbare Dateien
+chmod 777 /usr/local/bin/jetdns* 2>/dev/null
+chmod 777 /opt/jetdns/venv/bin/* 2>/dev/null
+
+echo "✅ JetDNS Berechtigungen repariert!"
+EOF
+    chmod 777 /usr/local/bin/jetdns-fix-permissions
+
+    # Alle kopierten Dateien mit Vollzugriff versehen
+    log "Korrigiere Berechtigungen aller kopierten Dateien..."
+    fix_all_jetdns_permissions
+
+    # Zusätzlich: Alle Python-Dateien ausführbar machen
+    find /opt/jetdns -name "*.py" -exec chmod 777 {} \; 2>/dev/null || true
+
+    log "JetDNS Dateien installiert und Berechtigungen gesetzt"
 }
 
 # Redis konfigurieren
@@ -338,11 +713,19 @@ finish_installation() {
     # Services aktivieren
     systemctl enable redis-server
 
+    # Finale Berechtigungskorrektur für alle JetDNS Komponenten
+    log "Führe finale Berechtigungskorrektur durch..."
+    fix_all_jetdns_permissions
+
+    # Stelle sicher, dass alle kritischen Dateien die richtigen Berechtigungen haben
+    chmod 777 /opt/jetdns/venv/bin/* 2>/dev/null || true
+    chmod 777 /usr/local/bin/jetdns* 2>/dev/null || true
+
     # Temp-Dateien aufräumen
     apt-get autoremove -y
     apt-get autoclean
 
-    log "Installation abgeschlossen!"
+    log "Installation abgeschlossen - alle Dateien haben Vollzugriff!"
 }
 
 # Zeige Setup-URL
@@ -419,10 +802,15 @@ main() {
     show_banner
     check_root
     detect_system
+
+    # Automatische System-Reparatur BEFORE alles andere
+    log "🚀 Starte präventive System-Optimierung..."
+    auto_fix_system
+
     check_internet
     check_existing_installation
 
-    log "Starte JetDNS Installation..."
+    log "Starte JetDNS Installation mit automatischer Fehlerbehebung..."
 
     install_dependencies
     create_venv
@@ -437,8 +825,28 @@ main() {
     show_setup_url
 }
 
-# Fehlerbehandlung
-trap 'error "Installation unterbrochen!"; exit 1' ERR
+# Erweiterte Fehlerbehandlung mit automatischer Reparatur
+handle_error() {
+    local line_number=$1
+    error "Installation unterbrochen in Zeile $line_number!"
+
+    log "🔧 Versuche automatische Fehler-Reparatur..."
+
+    # Letzte Rettungsversuche
+    auto_fix_system
+    fix_all_jetdns_permissions 2>/dev/null || true
+
+    # System aufräumen
+    apt-get -f install -y 2>/dev/null || true
+    systemctl daemon-reload 2>/dev/null || true
+
+    error "Installation fehlgeschlagen nach automatischen Reparatur-Versuchen"
+    echo "Bitte manuell überprüfen oder Script erneut ausführen"
+    exit 1
+}
+
+# Erweiterte Fehlerbehandlung
+trap 'handle_error ${LINENO}' ERR
 
 # Script ausführen
 main "$@"

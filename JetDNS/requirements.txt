@@ -46,3 +46,6 @@ flake8==6.0.0
 # Optional ML libraries
 torch==2.0.1
 transformers==4.21.3
+
+# YARA für Threat Detection (optional - Installation kann fehlschlagen)
+# yara-python==4.3.1
