@@ -7,8 +7,8 @@ Requires=network.target
 
 [Service]
 Type=notify
-User=jetdns
-Group=jetdns
+# Läuft als root - kein separater System-Benutzer erforderlich
+# User und Group werden bewusst weggelassen = root Ausführung
 WorkingDirectory=/opt/jetdns
 
 # Environment

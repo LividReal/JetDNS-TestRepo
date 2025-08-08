@@ -73,12 +73,24 @@ detect_system() {
     esac
 }
 
-# Root-Rechte prüfen
+# Root-Rechte prüfen oder anfordern
 check_root() {
     if [[ $EUID -ne 0 ]]; then
-        error "Dieses Script muss als root ausgeführt werden!"
-        echo "Verwenden Sie: sudo $0"
-        exit 1
+        echo -e "${YELLOW}Root-Rechte erforderlich für die Installation.${NC}"
+        echo "Optionen:"
+        echo "1. Script mit sudo ausführen: sudo $0"
+        echo "2. Als root anmelden und erneut ausführen"
+        echo "3. Root-Passwort eingeben und automatisch mit su fortfahren"
+        echo
+        read -p "Root-Passwort eingeben und mit su fortfahren? [y/N]: " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            echo -e "${BLUE}Starte Installation als root...${NC}"
+            exec su -c "$0 $*"
+        else
+            error "Installation abgebrochen. Bitte als root ausführen."
+            exit 1
+        fi
     fi
 }
 
@@ -218,6 +230,17 @@ install_jetdns_files() {
     cp jetdns-manager.py $JETDNS_HOME/bin/jetdns-manager
     chmod +x $JETDNS_HOME/bin/jetdns-manager
 
+    # Hauptserver-Script kopieren falls vorhanden
+    if [ -f "bin/jetdns-server" ]; then
+        cp bin/jetdns-server $JETDNS_HOME/bin/
+        chmod +x $JETDNS_HOME/bin/jetdns-server
+    fi
+
+    # Source-Dateien kopieren falls vorhanden
+    if [ -d "src" ]; then
+        cp -r src $JETDNS_HOME/
+    fi
+
     # Ausführbare Dateien erstellen
     cat > /usr/local/bin/jetdns-setup << EOF
 #!/bin/bash
@@ -298,6 +321,15 @@ configure_base_firewall() {
 # Installation abschließen
 finish_installation() {
     log "Schließe Installation ab..."
+
+    # JetDNS systemd Service installieren
+    if [ -f "systemd/jetdns.service" ]; then
+        log "Installiere systemd Service..."
+        cp systemd/jetdns.service /etc/systemd/system/
+        systemctl daemon-reload
+        systemctl enable jetdns.service
+        log "JetDNS Service installiert und aktiviert"
+    fi
 
     # Services aktivieren
     systemctl enable redis-server

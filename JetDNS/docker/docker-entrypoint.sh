@@ -87,13 +87,13 @@ if ! pgrep redis-server > /dev/null; then
     redis-server --daemonize yes --save 60 1 --loglevel warning
 fi
 
-# Berechtigungen prüfen
-chown -R jetdns:jetdns /etc/jetdns /var/log/jetdns /var/lib/jetdns
+# Berechtigungen prüfen (keine spezifischen Benutzer da Container-Umgebung)
+chmod -R 755 /etc/jetdns /var/log/jetdns /var/lib/jetdns
 
 # Erste Threat Intelligence Update (async)
 if [ "$ENABLE_THREAT_INTEL" = "true" ]; then
     echo "🛡️  Initialisiere Threat Intelligence (im Hintergrund)..."
-    su jetdns -s /bin/bash -c "cd /opt/jetdns && python3 -c 'import asyncio; from src.management.threat_intelligence import ThreatIntelligenceManager; ti = ThreatIntelligenceManager(); asyncio.run(ti.update_threat_feeds([\"ad_blocking\"]))'" &
+    cd /opt/jetdns && python3 -c 'import asyncio; from src.management.threat_intelligence import ThreatIntelligenceManager; ti = ThreatIntelligenceManager(); asyncio.run(ti.update_threat_feeds(["ad_blocking"]))' &
 fi
 
 # Warten auf Abhängigkeiten
@@ -106,7 +106,7 @@ if [ "$1" = "supervisord" ]; then
     exec "$@"
 elif [ "$1" = "jetdns-server" ]; then
     echo "🎯 Starte JetDNS Server direkt..."
-    exec su jetdns -s /bin/bash -c "cd /opt/jetdns && python3 bin/jetdns-server"
+    exec bash -c "cd /opt/jetdns && python3 bin/jetdns-server"
 else
     echo "🎯 Führe benutzerdefinierten Befehl aus: $@"
     exec "$@"

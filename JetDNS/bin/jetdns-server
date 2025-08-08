@@ -107,17 +107,14 @@ class JetDNSApplication:
             elif not path.is_dir():
                 errors.append(f"Kein Verzeichnis: {directory}")
 
-        # Berechtigungen prüfen
+        # Berechtigungen prüfen - root ist in dieser Konfiguration erwünscht
         if os.geteuid() == 0:
-            logger.warning("JetDNS läuft als root - Sicherheitsrisiko!")
+            logger.info("JetDNS läuft als root (konfiguriert für diese Installation)")
 
         # DNS Port prüfen
         dns_port = self.config_manager.get_value('dns', 'listen_port', 53)
         if dns_port < 1024 and os.geteuid() != 0:
-            import pwd
-            current_user = pwd.getpwuid(os.getuid()).pw_name
-            if current_user != 'jetdns':
-                errors.append(f"Privilegierter Port {dns_port} erfordert root oder jetdns user")
+            errors.append(f"Privilegierter Port {dns_port} erfordert root-Rechte")
 
         if errors:
             logger.error("Setup-Validierung fehlgeschlagen:")
