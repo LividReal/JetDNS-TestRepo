@@ -1,4 +1,26 @@
 """
+
+import os
+import re
+import json
+import time
+import sqlite3
+import logging
+import hashlib
+from pathlib import Path
+from datetime import datetime
+from typing import Dict, List, Set, Any, Optional, Tuple, Union
+from collections import defaultdict, Counter
+from dataclasses import dataclass
+import threading
+import numpy as np
+from difflib import SequenceMatcher
+import phonetics
+import nltk
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import DBSCAN
+from sklearn.ensemble import IsolationForest
+from sklearn.preprocessing import StandardScaler
 JetDNS Brand Protection System
 Advanced Typosquatting Detection with Machine Learning
 """

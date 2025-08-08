@@ -13,9 +13,7 @@ RUN apt-get update && apt-get install -y \
     supervisor \
     && rm -rf /var/lib/apt/lists/*
 
-# JetDNS User erstellen
-RUN useradd --system --home-dir /opt/jetdns --shell /bin/false jetdns
-
+# Kein System-Benutzer erforderlich - läuft als Container-Benutzer
 # Arbeitsverzeichnis
 WORKDIR /opt/jetdns
 
@@ -32,8 +30,8 @@ COPY systemd/ systemd/
 # Verzeichnisse erstellen
 RUN mkdir -p /etc/jetdns /var/log/jetdns /var/lib/jetdns
 
-# Berechtigungen setzen
-RUN chown -R jetdns:jetdns /opt/jetdns /etc/jetdns /var/log/jetdns /var/lib/jetdns
+# Berechtigungen setzen (für Container-Umgebung angepasst)
+RUN chmod -R 755 /opt/jetdns /etc/jetdns /var/log/jetdns /var/lib/jetdns
 
 # Konfigurationsdateien
 COPY docker/jetdns.conf /etc/jetdns/jetdns.conf

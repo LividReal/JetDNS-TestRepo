@@ -20,6 +20,7 @@ textdistance==4.6.0
 python-Levenshtein==0.21.1
 fuzzywuzzy==0.18.0
 nltk==3.8.1
+phonetics==1.0.5
 
 # Security and encryption
 cryptography==41.0.4
@@ -27,7 +28,6 @@ bcrypt==4.0.1
 
 # Database and caching
 redis==4.6.0
-sqlite3
 
 # Configuration and logging
 PyYAML==6.0.1

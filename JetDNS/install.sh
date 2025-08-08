@@ -160,16 +160,10 @@ install_python_deps() {
     log "Python-Abhängigkeiten installiert"
 }
 
-# JetDNS Benutzer erstellen
+# JetDNS Benutzer erstellen (übersprungen - nur Web-Interface Benutzer werden benötigt)
 create_user() {
-    log "Erstelle JetDNS Benutzer..."
-
-    if ! id jetdns &>/dev/null; then
-        useradd --system --home-dir /opt/jetdns --shell /bin/false jetdns
-        log "Benutzer 'jetdns' erstellt"
-    else
-        log "Benutzer 'jetdns' existiert bereits"
-    fi
+    log "Überspringe System-Benutzer-Erstellung - nur Web-Interface Benutzer werden verwendet"
+    # Kein System-Benutzer wird erstellt, nur Web-Interface Benutzer im GUI
 }
 
 # Verzeichnisse und Berechtigungen einrichten
@@ -181,10 +175,10 @@ setup_directories() {
     mkdir -p /etc/jetdns/{ssl,blocklists}
     mkdir -p /var/log/jetdns
 
-    # Berechtigungen setzen
-    chown -R jetdns:jetdns /opt/jetdns
-    chown -R jetdns:jetdns /etc/jetdns
-    chown -R jetdns:jetdns /var/log/jetdns
+    # Berechtigungen setzen (als root, da kein jetdns System-Benutzer vorhanden)
+    chmod -R 755 /opt/jetdns
+    chmod -R 755 /etc/jetdns
+    chmod -R 755 /var/log/jetdns
 
     # Log-Rotation einrichten
     cat > /etc/logrotate.d/jetdns << EOF
@@ -195,7 +189,7 @@ setup_directories() {
     compress
     delaycompress
     notifempty
-    create 0644 jetdns jetdns
+    create 0644 root root
     postrotate
         systemctl reload jetdns 2>/dev/null || true
     endscript
@@ -376,7 +370,7 @@ check_existing_installation() {
             log "Entferne vorhandene Installation..."
             rm -rf /opt/jetdns
             rm -rf /etc/jetdns
-            userdel -r jetdns 2>/dev/null || true
+            # Kein System-Benutzer zu löschen, da keiner erstellt wurde
         else
             error "Installation abgebrochen"
             exit 1

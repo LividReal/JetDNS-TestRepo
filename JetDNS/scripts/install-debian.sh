@@ -233,22 +233,17 @@ install_dependencies() {
 }
 
 create_user() {
-    print_step "Erstelle DNS-Server Benutzer..."
+    print_step "Überspringe System-Benutzer-Erstellung..."
 
-    if ! id "$USER" &>/dev/null; then
-        useradd --system --home-dir "$INSTALL_DIR" --shell /bin/false --create-home "$USER"
-        print_success "Benutzer $USER erstellt"
-    else
-        print_status "Benutzer $USER existiert bereits"
-    fi
+    print_status "Kein System-Benutzer wird erstellt - nur Web-Interface Benutzer werden verwendet"
 
-    # Gruppe für Webserver-Zugriff
+    # Gruppe für Webserver-Zugriff (optional beibehalten)
     if ! getent group dnsadmin >/dev/null; then
         groupadd dnsadmin
         print_success "Gruppe dnsadmin erstellt"
     fi
 
-    usermod -a -G dnsadmin "$USER"
+    # Keine usermod-Befehle da kein System-Benutzer erstellt wird
 }
 
 download_application() {
