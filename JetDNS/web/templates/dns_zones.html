@@ -1,0 +1,1424 @@
+{% extends "base.html" %}
+
+{% block title %}DNS Zonen - Advanced DNS Server{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3 mb-0">DNS Zonen & Records Management</h1>
+            <p class="text-muted">Verwalten Sie authoritative DNS-Zonen und individuelle DNS-Records</p>
+        </div>
+        <div class="col-auto">
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="addZone()">
+                    <i class="fas fa-plus me-1"></i>Zone hinzufügen
+                </button>
+                <button class="btn btn-outline-primary" onclick="importZone()">
+                    <i class="fas fa-upload me-1"></i>Zone importieren
+                </button>
+                <button class="btn btn-outline-secondary" onclick="validateAllZones()">
+                    <i class="fas fa-check-double me-1"></i>Alle validieren
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DNS Server Mode Selection -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">DNS Server Modus</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="recursive_enabled" checked 
+                                       onchange="updateDNSMode()">
+                                <label class="form-check-label" for="recursive_enabled">
+                                    <strong>Recursive Resolver</strong>
+                                    <br><small class="text-muted">Löst Queries über Upstream-Server auf</small>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="authoritative_enabled" 
+                                       onchange="updateDNSMode()">
+                                <label class="form-check-label" for="authoritative_enabled">
+                                    <strong>Authoritative Server</strong>
+                                    <br><small class="text-muted">Hostet eigene DNS-Zonen</small>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="forwarder_enabled" checked 
+                                       onchange="updateDNSMode()">
+                                <label class="form-check-label" for="forwarder_enabled">
+                                    <strong>Conditional Forwarder</strong>
+                                    <br><small class="text-muted">Spezifische Domains an andere Server</small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="dns-mode-warnings" class="mt-3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs für verschiedene DNS-Verwaltungsbereiche -->
+    <ul class="nav nav-pills mb-4" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#zones-tab">
+                <i class="fas fa-globe me-1"></i>Authoritative Zonen
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#records-tab">
+                <i class="fas fa-list me-1"></i>DNS Records
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#forwarders-tab">
+                <i class="fas fa-share me-1"></i>Conditional Forwarders
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#recursive-tab">
+                <i class="fas fa-sitemap me-1"></i>Recursive Settings
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <!-- Authoritative Zones Tab -->
+        <div class="tab-pane fade show active" id="zones-tab">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">DNS Zonen</h5>
+                            <span class="badge bg-primary" id="zones-count">0 Zonen</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="zones-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Zone</th>
+                                            <th>Typ</th>
+                                            <th>Records</th>
+                                            <th>TTL</th>
+                                            <th>Status</th>
+                                            <th>Aktionen</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <i class="fas fa-globe text-primary me-2"></i>
+                                                    <div>
+                                                        <strong>example.local</strong>
+                                                        <br><small class="text-muted">Lokale Entwicklungszone</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td><span class="badge bg-success">Primary</span></td>
+                                            <td>
+                                                <span class="badge bg-info">A: 3</span>
+                                                <span class="badge bg-warning">CNAME: 2</span>
+                                                <span class="badge bg-secondary">MX: 1</span>
+                                            </td>
+                                            <td>3600s</td>
+                                            <td><span class="badge bg-success">Aktiv</span></td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    <button class="btn btn-outline-primary" onclick="editZone('example.local')">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn btn-outline-info" onclick="viewZoneRecords('example.local')">
+                                                        <i class="fas fa-list"></i>
+                                                    </button>
+                                                    <button class="btn btn-outline-warning" onclick="validateZone('example.local')">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                    <button class="btn btn-outline-danger" onclick="deleteZone('example.local')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Zone Statistiken</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Aktive Zonen</span>
+                                <span class="fw-bold text-success" id="active-zones">1</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Gesamt Records</span>
+                                <span class="fw-bold" id="total-records">6</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Queries heute</span>
+                                <span class="fw-bold" id="zone-queries">156</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Zone Transfers</span>
+                                <span class="fw-bold" id="zone-transfers">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Quick Actions</h6>
+                        </div>
+                        <div class="card-body d-grid gap-2">
+                            <button class="btn btn-primary btn-sm" onclick="addZone()">
+                                <i class="fas fa-plus me-1"></i>Neue Zone
+                            </button>
+                            <button class="btn btn-outline-info btn-sm" onclick="bulkImport()">
+                                <i class="fas fa-upload me-1"></i>Bulk Import
+                            </button>
+                            <button class="btn btn-outline-warning btn-sm" onclick="exportZones()">
+                                <i class="fas fa-download me-1"></i>Export Zonen
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="reloadZones()">
+                                <i class="fas fa-sync me-1"></i>Zonen neu laden
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DNS Records Tab -->
+        <div class="tab-pane fade" id="records-tab">
+            <div class="row">
+                <div class="col-lg-9">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">DNS Records Management</h5>
+                            <div class="d-flex gap-2">
+                                <select class="form-select form-select-sm" id="zone-filter" onchange="filterRecords()">
+                                    <option value="">Alle Zonen</option>
+                                    <option value="example.local">example.local</option>
+                                </select>
+                                <select class="form-select form-select-sm" id="record-type-filter" onchange="filterRecords()">
+                                    <option value="">Alle Typen</option>
+                                    <option value="A">A Records</option>
+                                    <option value="AAAA">AAAA Records</option>
+                                    <option value="CNAME">CNAME Records</option>
+                                    <option value="MX">MX Records</option>
+                                    <option value="TXT">TXT Records</option>
+                                    <option value="NS">NS Records</option>
+                                    <option value="PTR">PTR Records</option>
+                                    <option value="SRV">SRV Records</option>
+                                </select>
+                                <button class="btn btn-primary btn-sm" onclick="addRecord()">
+                                    <i class="fas fa-plus me-1"></i>Record
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover" id="records-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Typ</th>
+                                            <th>Wert</th>
+                                            <th>TTL</th>
+                                            <th>Priorität</th>
+                                            <th>Status</th>
+                                            <th>Aktionen</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><code>www.example.local</code></td>
+                                            <td><span class="badge bg-primary">A</span></td>
+                                            <td><code>192.168.1.100</code></td>
+                                            <td>3600</td>
+                                            <td>-</td>
+                                            <td><i class="fas fa-check-circle text-success" title="Gültig"></i></td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    <button class="btn btn-outline-secondary btn-sm" onclick="editRecord(1)">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn btn-outline-info btn-sm" onclick="testRecord(1)">
+                                                        <i class="fas fa-vial"></i>
+                                                    </button>
+                                                    <button class="btn btn-outline-danger btn-sm" onclick="deleteRecord(1)">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>mail.example.local</code></td>
+                                            <td><span class="badge bg-warning">MX</span></td>
+                                            <td><code>mail-server.example.local</code></td>
+                                            <td>3600</td>
+                                            <td>10</td>
+                                            <td><i class="fas fa-exclamation-triangle text-warning" title="Warnung: Ziel nicht auflösbar"></i></td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    <button class="btn btn-outline-secondary btn-sm" onclick="editRecord(2)">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn btn-outline-info btn-sm" onclick="testRecord(2)">
+                                                        <i class="fas fa-vial"></i>
+                                                    </button>
+                                                    <button class="btn btn-outline-danger btn-sm" onclick="deleteRecord(2)">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Record Validierung</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Gültige Records</span>
+                                <span class="fw-bold text-success">1</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Warnungen</span>
+                                <span class="fw-bold text-warning">1</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Fehler</span>
+                                <span class="fw-bold text-danger">0</span>
+                            </div>
+                            <hr>
+                            <button class="btn btn-outline-primary btn-sm w-100" onclick="validateAllRecords()">
+                                <i class="fas fa-check-double me-1"></i>Alle validieren
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Häufige Record Typen</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-outline-primary btn-sm" onclick="addRecordType('A')">
+                                    <i class="fas fa-plus me-1"></i>A Record
+                                </button>
+                                <button class="btn btn-outline-primary btn-sm" onclick="addRecordType('CNAME')">
+                                    <i class="fas fa-plus me-1"></i>CNAME
+                                </button>
+                                <button class="btn btn-outline-primary btn-sm" onclick="addRecordType('MX')">
+                                    <i class="fas fa-plus me-1"></i>MX Record
+                                </button>
+                                <button class="btn btn-outline-primary btn-sm" onclick="addRecordType('TXT')">
+                                    <i class="fas fa-plus me-1"></i>TXT Record
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conditional Forwarders Tab -->
+        <div class="tab-pane fade" id="forwarders-tab">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Conditional Forwarders</h5>
+                    <button class="btn btn-primary btn-sm" onclick="addForwarder()">
+                        <i class="fas fa-plus me-1"></i>Forwarder hinzufügen
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Conditional Forwarders:</strong> Leiten Queries für spezifische Domains an bestimmte DNS-Server weiter.
+                        Nützlich für interne Domains oder spezielle Netzwerkbereiche.
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Domain</th>
+                                    <th>Forwarder Server</th>
+                                    <th>Status</th>
+                                    <th>Queries (24h)</th>
+                                    <th>Aktionen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>company.local</code></td>
+                                    <td><code>192.168.1.10</code></td>
+                                    <td><span class="badge bg-success">Aktiv</span></td>
+                                    <td>1,234</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-secondary" onclick="editForwarder('company.local')">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-outline-info" onclick="testForwarder('company.local')">
+                                                <i class="fas fa-vial"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" onclick="deleteForwarder('company.local')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recursive Settings Tab -->
+        <div class="tab-pane fade" id="recursive-tab">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Recursive DNS Einstellungen</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Recursion Timeout</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="recursion_timeout" 
+                                               value="10" min="1" max="60" onchange="validateRecursionTimeout()">
+                                        <span class="input-group-text">Sekunden</span>
+                                    </div>
+                                    <div class="form-text">Zeit bis Timeout bei Upstream-Queries (1-60s)</div>
+                                    <div id="recursion_timeout_feedback" class="invalid-feedback"></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Max Recursion Depth</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="recursion_depth" 
+                                               value="16" min="1" max="30" onchange="validateRecursionDepth()">
+                                        <span class="input-group-text">Sprünge</span>
+                                    </div>
+                                    <div class="form-text">Max. DNS-Referenzen pro Query (1-30)</div>
+                                    <div id="recursion_depth_feedback" class="invalid-feedback"></div>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Query Rate Limit</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="query_rate_limit" 
+                                               value="1000" min="10" max="10000" onchange="validateQueryRateLimit()">
+                                        <span class="input-group-text">pro Sekunde</span>
+                                    </div>
+                                    <div class="form-text">Max. Queries pro Sekunde (10-10000)</div>
+                                    <div id="query_rate_limit_feedback" class="invalid-feedback"></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Client Subnet</label>
+                                    <input type="text" class="form-control" id="client_subnet" 
+                                           placeholder="192.168.0.0/16" onchange="validateClientSubnet()">
+                                    <div class="form-text">Erlaubte Client-Netzwerke (CIDR)</div>
+                                    <div id="client_subnet_feedback" class="invalid-feedback"></div>
+                                </div>
+                            </div>
+
+                            <h6>Erweiterte Optionen</h6>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="dnssec_validation" 
+                                               onchange="updateDNSSECValidation()">
+                                        <label class="form-check-label" for="dnssec_validation">
+                                            DNSSEC Validierung
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="qname_minimisation" checked>
+                                        <label class="form-check-label" for="qname_minimisation">
+                                            QNAME Minimisation
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="prefetch_enabled">
+                                        <label class="form-check-label" for="prefetch_enabled">
+                                            Cache Prefetch
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Root Hints & Fallback</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Root Hints Datei</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="root_hints_file" 
+                                           value="/etc/dns/root.hints" readonly>
+                                    <button class="btn btn-outline-secondary" onclick="updateRootHints()">
+                                        <i class="fas fa-sync me-1"></i>Update
+                                    </button>
+                                </div>
+                                <div class="form-text">Letztes Update: vor 7 Tagen</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Fallback DNS Server</label>
+                                <div id="fallback-servers">
+                                    <div class="input-group mb-2">
+                                        <input type="text" class="form-control" value="8.8.8.8" 
+                                               onchange="validateDNSServer(this)">
+                                        <button class="btn btn-outline-danger" onclick="removeFallbackServer(this)">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                    <div class="input-group mb-2">
+                                        <input type="text" class="form-control" value="1.1.1.1" 
+                                               onchange="validateDNSServer(this)">
+                                        <button class="btn btn-outline-danger" onclick="removeFallbackServer(this)">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <button class="btn btn-outline-primary btn-sm" onclick="addFallbackServer()">
+                                    <i class="fas fa-plus me-1"></i>Server hinzufügen
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Recursive Performance</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="recursive-performance-chart" height="200"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Validation Status</h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="validation-status">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Konfiguration</span>
+                                    <span class="badge bg-success">Gültig</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Root Hints</span>
+                                    <span class="badge bg-success">Aktuell</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Upstream Server</span>
+                                    <span class="badge bg-success">Erreichbar</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Zone Modal -->
+<div class="modal fade" id="addZoneModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">DNS Zone hinzufügen</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="zone-form" class="needs-validation" novalidate>
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label">Zone Name</label>
+                            <input type="text" class="form-control" id="zone_name" 
+                                   placeholder="example.com" required onchange="validateZoneName()">
+                            <div class="valid-feedback">Gültiger Zone-Name</div>
+                            <div class="invalid-feedback" id="zone_name_feedback">
+                                Bitte geben Sie einen gültigen Zone-Namen ein
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Zone Typ</label>
+                            <select class="form-select" id="zone_type" required onchange="updateZoneOptions()">
+                                <option value="">Typ wählen...</option>
+                                <option value="primary">Primary (Master)</option>
+                                <option value="secondary">Secondary (Slave)</option>
+                                <option value="forward">Forward</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="primary-zone-options">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Admin Email</label>
+                                <input type="email" class="form-control" id="admin_email" 
+                                       placeholder="admin@example.com" required>
+                                <div class="form-text">SOA Record - Administrator Email</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Default TTL</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="default_ttl" 
+                                           value="3600" min="300" max="86400" required onchange="validateTTL()">
+                                    <span class="input-group-text">Sekunden</span>
+                                </div>
+                                <div class="form-text">300-86400 Sekunden (5min-24h)</div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Serial</label>
+                                <input type="number" class="form-control" id="serial" 
+                                       value="2023121501" readonly>
+                                <div class="form-text">Automatisch generiert</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Refresh</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="refresh" 
+                                           value="10800" min="3600" max="86400">
+                                    <span class="input-group-text">s</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Retry</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="retry" 
+                                           value="3600" min="600" max="7200">
+                                    <span class="input-group-text">s</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="secondary-zone-options" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label">Master Server</label>
+                            <input type="text" class="form-control" id="master_server" 
+                                   placeholder="192.168.1.10" onchange="validateIPAddress(this)">
+                            <div class="form-text">IP-Adresse des Primary DNS Servers</div>
+                        </div>
+                    </div>
+
+                    <div id="forward-zone-options" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label">Forwarder Server</label>
+                            <div id="forwarder-servers">
+                                <div class="input-group mb-2">
+                                    <input type="text" class="form-control" placeholder="8.8.8.8" 
+                                           onchange="validateDNSServer(this)">
+                                    <button type="button" class="btn btn-outline-danger" 
+                                            onclick="removeForwarderServer(this)">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm" 
+                                    onclick="addForwarderServer()">
+                                <i class="fas fa-plus me-1"></i>Server hinzufügen
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info" role="alert" id="zone-validation-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <span id="zone-validation-message">Geben Sie einen Zone-Namen ein, um die Validierung zu starten.</span>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                <button type="button" class="btn btn-primary" onclick="saveZone()" id="save-zone-btn" disabled>
+                    <i class="fas fa-save me-1"></i>Zone erstellen
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add DNS Record Modal -->
+<div class="modal fade" id="addRecordModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">DNS Record hinzufügen</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="record-form" class="needs-validation" novalidate>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Zone</label>
+                            <select class="form-select" id="record_zone" required>
+                                <option value="">Zone wählen...</option>
+                                <option value="example.local">example.local</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Name</label>
+                            <input type="text" class="form-control" id="record_name" 
+                                   placeholder="www" required onchange="validateRecordName()">
+                            <div class="form-text">Leer für Root (@)</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Record Typ</label>
+                            <select class="form-select" id="record_type" required onchange="updateRecordFields()">
+                                <option value="">Typ wählen...</option>
+                                <option value="A">A - IPv4 Adresse</option>
+                                <option value="AAAA">AAAA - IPv6 Adresse</option>
+                                <option value="CNAME">CNAME - Canonical Name</option>
+                                <option value="MX">MX - Mail Exchange</option>
+                                <option value="TXT">TXT - Text Record</option>
+                                <option value="NS">NS - Name Server</option>
+                                <option value="PTR">PTR - Pointer Record</option>
+                                <option value="SRV">SRV - Service Record</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic fields based on record type -->
+                    <div id="record-fields">
+                        <!-- Fields werden dynamisch hinzugefügt -->
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">TTL (Time To Live)</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="record_ttl" 
+                                       value="3600" min="60" max="86400" onchange="validateTTL(this)">
+                                <span class="input-group-text">Sekunden</span>
+                            </div>
+                            <div class="form-text">60-86400 Sekunden empfohlen</div>
+                        </div>
+                        <div class="col-md-6" id="priority-field" style="display: none;">
+                            <label class="form-label">Priorität</label>
+                            <input type="number" class="form-control" id="record_priority" 
+                                   min="0" max="65535" value="10">
+                            <div class="form-text">Niedriger = höhere Priorität</div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-success" role="alert" id="record-validation-success" style="display: none;">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <span id="record-success-message"></span>
+                    </div>
+
+                    <div class="alert alert-danger" role="alert" id="record-validation-error" style="display: none;">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <span id="record-error-message"></span>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                <button type="button" class="btn btn-primary" onclick="saveRecord()" id="save-record-btn" disabled>
+                    <i class="fas fa-save me-1"></i>Record erstellen
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// DNS Validation Rules and Constraints
+const DNS_CONSTRAINTS = {
+    zone_name: {
+        max_length: 253,
+        label_max_length: 63,
+        pattern: /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.?$/
+    },
+    ttl: {
+        min: 60,
+        max: 86400,
+        recommended_min: 300,
+        recommended_max: 3600
+    },
+    ip_address: {
+        ipv4_pattern: /^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$/,
+        ipv6_pattern: /^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$/
+    },
+    hostname: {
+        max_length: 253,
+        label_max_length: 63,
+        pattern: /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.?$/
+    }
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadDNSZones();
+    loadDNSRecords();
+    updateValidationStatus();
+
+    // Setup modal event listeners
+    document.getElementById('addZoneModal').addEventListener('shown.bs.modal', function () {
+        generateSerial();
+    });
+});
+
+// DNS Zone Management Functions
+function addZone() {
+    const modal = new bootstrap.Modal(document.getElementById('addZoneModal'));
+    modal.show();
+}
+
+function validateZoneName() {
+    const input = document.getElementById('zone_name');
+    const feedback = document.getElementById('zone_name_feedback');
+    const saveBtn = document.getElementById('save-zone-btn');
+    const validationInfo = document.getElementById('zone-validation-message');
+
+    const zoneName = input.value.trim();
+
+    if (!zoneName) {
+        input.classList.remove('is-valid', 'is-invalid');
+        saveBtn.disabled = true;
+        validationInfo.textContent = "Geben Sie einen Zone-Namen ein, um die Validierung zu starten.";
+        return;
+    }
+
+    // Length check
+    if (zoneName.length > DNS_CONSTRAINTS.zone_name.max_length) {
+        input.classList.add('is-invalid');
+        input.classList.remove('is-valid');
+        feedback.textContent = `Zone-Name zu lang (max. ${DNS_CONSTRAINTS.zone_name.max_length} Zeichen)`;
+        saveBtn.disabled = true;
+        return;
+    }
+
+    // Label length check
+    const labels = zoneName.split('.');
+    for (let label of labels) {
+        if (label.length > DNS_CONSTRAINTS.zone_name.label_max_length) {
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+            feedback.textContent = `Label "${label}" zu lang (max. ${DNS_CONSTRAINTS.zone_name.label_max_length} Zeichen)`;
+            saveBtn.disabled = true;
+            return;
+        }
+    }
+
+    // Pattern check
+    if (!DNS_CONSTRAINTS.zone_name.pattern.test(zoneName)) {
+        input.classList.add('is-invalid');
+        input.classList.remove('is-valid');
+        feedback.textContent = "Ungültiger Zone-Name. Verwenden Sie nur Buchstaben, Zahlen und Bindestriche.";
+        saveBtn.disabled = true;
+        return;
+    }
+
+    // Reserved name check
+    const reservedNames = ['localhost', 'test', 'invalid', 'example'];
+    if (reservedNames.some(reserved => zoneName.includes(reserved))) {
+        input.classList.add('is-invalid');
+        input.classList.remove('is-valid');
+        feedback.textContent = "Zone-Name enthält reservierte Begriffe.";
+        validationInfo.textContent = "⚠️ Warnung: Dieser Zone-Name könnte Konflikte verursachen.";
+        // Don't disable save button for warnings
+    } else {
+        input.classList.add('is-valid');
+        input.classList.remove('is-invalid');
+        validationInfo.textContent = "✅ Zone-Name ist gültig und kann verwendet werden.";
+        saveBtn.disabled = false;
+    }
+}
+
+function validateTTL(input = null) {
+    if (!input) input = document.getElementById('default_ttl');
+
+    const ttl = parseInt(input.value);
+    const parent = input.closest('.col-md-6') || input.closest('.input-group').parentElement;
+
+    // Remove existing feedback
+    const existingFeedback = parent.querySelector('.invalid-feedback, .valid-feedback');
+    if (existingFeedback) existingFeedback.remove();
+
+    if (ttl < DNS_CONSTRAINTS.ttl.min || ttl > DNS_CONSTRAINTS.ttl.max) {
+        input.classList.add('is-invalid');
+        input.classList.remove('is-valid');
+
+        const feedback = document.createElement('div');
+        feedback.className = 'invalid-feedback';
+        feedback.textContent = `TTL muss zwischen ${DNS_CONSTRAINTS.ttl.min} und ${DNS_CONSTRAINTS.ttl.max} Sekunden liegen`;
+        parent.appendChild(feedback);
+        return false;
+    } else if (ttl < DNS_CONSTRAINTS.ttl.recommended_min || ttl > DNS_CONSTRAINTS.ttl.recommended_max) {
+        input.classList.add('is-valid');
+        input.classList.remove('is-invalid');
+
+        const feedback = document.createElement('div');
+        feedback.className = 'valid-feedback';
+        feedback.textContent = `TTL funktioniert, aber ${DNS_CONSTRAINTS.ttl.recommended_min}-${DNS_CONSTRAINTS.ttl.recommended_max}s sind empfohlen`;
+        parent.appendChild(feedback);
+        return true;
+    } else {
+        input.classList.add('is-valid');
+        input.classList.remove('is-invalid');
+
+        const feedback = document.createElement('div');
+        feedback.className = 'valid-feedback';
+        feedback.textContent = 'TTL ist optimal eingestellt';
+        parent.appendChild(feedback);
+        return true;
+    }
+}
+
+function validateIPAddress(input) {
+    const ip = input.value.trim();
+
+    if (!ip) {
+        input.classList.remove('is-valid', 'is-invalid');
+        return;
+    }
+
+    const isIPv4 = DNS_CONSTRAINTS.ip_address.ipv4_pattern.test(ip);
+    const isIPv6 = DNS_CONSTRAINTS.ip_address.ipv6_pattern.test(ip);
+
+    if (isIPv4 || isIPv6) {
+        input.classList.add('is-valid');
+        input.classList.remove('is-invalid');
+
+        // Additional IPv4 validation
+        if (isIPv4) {
+            const parts = ip.split('.');
+            const isPrivate = (parts[0] === '10') || 
+                            (parts[0] === '172' && parts[1] >= 16 && parts[1] <= 31) ||
+                            (parts[0] === '192' && parts[1] === '168');
+
+            const isLoopback = parts[0] === '127';
+            const isBroadcast = parts.every(part => part === '255');
+
+            if (isLoopback || isBroadcast) {
+                input.classList.add('is-invalid');
+                input.classList.remove('is-valid');
+            }
+        }
+    } else {
+        input.classList.add('is-invalid');
+        input.classList.remove('is-valid');
+    }
+}
+
+function validateDNSServer(input) {
+    const server = input.value.trim();
+
+    if (!server) {
+        input.classList.remove('is-valid', 'is-invalid');
+        return;
+    }
+
+    // Check if it's an IP address
+    const isIPv4 = DNS_CONSTRAINTS.ip_address.ipv4_pattern.test(server);
+    const isIPv6 = DNS_CONSTRAINTS.ip_address.ipv6_pattern.test(server);
+    const isHostname = DNS_CONSTRAINTS.hostname.pattern.test(server);
+
+    if (isIPv4 || isIPv6 || isHostname) {
+        input.classList.add('is-valid');
+        input.classList.remove('is-invalid');
+
+        // Test DNS server connectivity (in real implementation)
+        testDNSServerConnectivity(server).then(isReachable => {
+            if (!isReachable) {
+                input.classList.add('is-invalid');
+                input.classList.remove('is-valid');
+                showToast(`DNS Server ${server} nicht erreichbar`, 'warning');
+            }
+        });
+    } else {
+        input.classList.add('is-invalid');
+        input.classList.remove('is-valid');
+    }
+}
+
+function updateZoneOptions() {
+    const zoneType = document.getElementById('zone_type').value;
+
+    document.getElementById('primary-zone-options').style.display = 
+        (zoneType === 'primary') ? 'block' : 'none';
+    document.getElementById('secondary-zone-options').style.display = 
+        (zoneType === 'secondary') ? 'block' : 'none';
+    document.getElementById('forward-zone-options').style.display = 
+        (zoneType === 'forward') ? 'block' : 'none';
+
+    // Update validation
+    updateZoneValidation();
+}
+
+function generateSerial() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const serial = `${year}${month}${day}01`; // Format: YYYYMMDDNN
+
+    document.getElementById('serial').value = serial;
+}
+
+function updateRecordFields() {
+    const recordType = document.getElementById('record_type').value;
+    const fieldsContainer = document.getElementById('record-fields');
+    const priorityField = document.getElementById('priority-field');
+
+    fieldsContainer.innerHTML = '';
+    priorityField.style.display = 'none';
+
+    switch (recordType) {
+        case 'A':
+            fieldsContainer.innerHTML = `
+                <div class="mb-3">
+                    <label class="form-label">IPv4 Adresse</label>
+                    <input type="text" class="form-control" id="record_value" 
+                           placeholder="192.168.1.100" required onchange="validateIPv4(this)">
+                    <div class="form-text">Gültige IPv4-Adresse (z.B. 192.168.1.100)</div>
+                </div>
+            `;
+            break;
+
+        case 'AAAA':
+            fieldsContainer.innerHTML = `
+                <div class="mb-3">
+                    <label class="form-label">IPv6 Adresse</label>
+                    <input type="text" class="form-control" id="record_value" 
+                           placeholder="2001:db8::1" required onchange="validateIPv6(this)">
+                    <div class="form-text">Gültige IPv6-Adresse (z.B. 2001:db8::1)</div>
+                </div>
+            `;
+            break;
+
+        case 'CNAME':
+            fieldsContainer.innerHTML = `
+                <div class="mb-3">
+                    <label class="form-label">Ziel Hostname</label>
+                    <input type="text" class="form-control" id="record_value" 
+                           placeholder="target.example.com" required onchange="validateHostname(this)">
+                    <div class="form-text">FQDN des Ziel-Hostnamens</div>
+                </div>
+                <div class="alert alert-warning" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Hinweis:</strong> CNAME Records können nicht mit anderen Record-Typen für denselben Namen koexistieren.
+                </div>
+            `;
+            break;
+
+        case 'MX':
+            priorityField.style.display = 'block';
+            fieldsContainer.innerHTML = `
+                <div class="mb-3">
+                    <label class="form-label">Mail Server</label>
+                    <input type="text" class="form-control" id="record_value" 
+                           placeholder="mail.example.com" required onchange="validateHostname(this)">
+                    <div class="form-text">FQDN des Mail-Servers</div>
+                </div>
+            `;
+            break;
+
+        case 'TXT':
+            fieldsContainer.innerHTML = `
+                <div class="mb-3">
+                    <label class="form-label">Text Inhalt</label>
+                    <textarea class="form-control" id="record_value" rows="3" 
+                              placeholder="v=spf1 include:_spf.google.com ~all" required onchange="validateTxtRecord(this)"></textarea>
+                    <div class="form-text">Text-Inhalt (max. 255 Zeichen pro String)</div>
+                </div>
+            `;
+            break;
+
+        case 'NS':
+            fieldsContainer.innerHTML = `
+                <div class="mb-3">
+                    <label class="form-label">Name Server</label>
+                    <input type="text" class="form-control" id="record_value" 
+                           placeholder="ns1.example.com" required onchange="validateHostname(this)">
+                    <div class="form-text">FQDN des Name-Servers</div>
+                </div>
+                <div class="alert alert-info" role="alert">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Tipp:</strong> NS Records sollten immer auf authoritative Name Server zeigen.
+                </div>
+            `;
+            break;
+
+        case 'SRV':
+            priorityField.style.display = 'block';
+            fieldsContainer.innerHTML = `
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Weight</label>
+                        <input type="number" class="form-control" id="srv_weight" 
+                               value="0" min="0" max="65535">
+                        <div class="form-text">Gewichtung (0-65535)</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Port</label>
+                        <input type="number" class="form-control" id="srv_port" 
+                               placeholder="80" min="1" max="65535" required>
+                        <div class="form-text">Service Port</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Target</label>
+                        <input type="text" class="form-control" id="record_value" 
+                               placeholder="target.example.com" required onchange="validateHostname(this)">
+                    </div>
+                </div>
+            `;
+            break;
+    }
+
+    updateRecordValidation();
+}
+
+// Validation functions for different IP types
+function validateIPv4(input) {
+    const ip = input.value.trim();
+    if (DNS_CONSTRAINTS.ip_address.ipv4_pattern.test(ip)) {
+        input.classList.add('is-valid');
+        input.classList.remove('is-invalid');
+
+        // Check for private/special ranges
+        const parts = ip.split('.');
+        if (parts[0] === '127') {
+            showValidationWarning(input, 'Loopback-Adresse erkannt');
+        } else if (parts[0] === '0' || parts.every(p => p === '255')) {
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+            showValidationError(input, 'Ungültige oder reservierte IP-Adresse');
+        }
+    } else {
+        input.classList.add('is-invalid');
+        input.classList.remove('is-valid');
+        showValidationError(input, 'Ungültige IPv4-Adresse');
+    }
+}
+
+function validateIPv6(input) {
+    const ip = input.value.trim();
+    if (DNS_CONSTRAINTS.ip_address.ipv6_pattern.test(ip)) {
+        input.classList.add('is-valid');
+        input.classList.remove('is-invalid');
+    } else {
+        input.classList.add('is-invalid');
+        input.classList.remove('is-valid');
+        showValidationError(input, 'Ungültige IPv6-Adresse');
+    }
+}
+
+function validateHostname(input) {
+    const hostname = input.value.trim();
+
+    if (hostname.length > DNS_CONSTRAINTS.hostname.max_length) {
+        input.classList.add('is-invalid');
+        input.classList.remove('is-valid');
+        showValidationError(input, `Hostname zu lang (max. ${DNS_CONSTRAINTS.hostname.max_length} Zeichen)`);
+        return;
+    }
+
+    if (DNS_CONSTRAINTS.hostname.pattern.test(hostname)) {
+        input.classList.add('is-valid');
+        input.classList.remove('is-invalid');
+
+        // Check if hostname ends with a dot (FQDN)
+        if (!hostname.endsWith('.')) {
+            showValidationWarning(input, 'Hostname sollte mit einem Punkt enden (FQDN)');
+        }
+    } else {
+        input.classList.add('is-invalid');
+        input.classList.remove('is-valid');
+        showValidationError(input, 'Ungültiger Hostname');
+    }
+}
+
+function validateTxtRecord(input) {
+    const text = input.value;
+
+    // TXT records have specific length limitations
+    if (text.length > 255) {
+        input.classList.add('is-invalid');
+        input.classList.remove('is-valid');
+        showValidationError(input, 'TXT Record zu lang (max. 255 Zeichen)');
+    } else {
+        input.classList.add('is-valid');
+        input.classList.remove('is-invalid');
+
+        // Check for common TXT record formats
+        if (text.startsWith('v=spf1')) {
+            showValidationInfo(input, 'SPF Record erkannt');
+        } else if (text.startsWith('v=DKIM1')) {
+            showValidationInfo(input, 'DKIM Record erkannt');
+        } else if (text.startsWith('v=DMARC1')) {
+            showValidationInfo(input, 'DMARC Record erkannt');
+        }
+    }
+}
+
+// Validation helper functions
+function showValidationError(input, message) {
+    clearValidationMessages();
+    document.getElementById('record-validation-error').style.display = 'block';
+    document.getElementById('record-error-message').textContent = message;
+    document.getElementById('save-record-btn').disabled = true;
+}
+
+function showValidationWarning(input, message) {
+    // Warnings don't disable the save button
+    showToast(message, 'warning');
+}
+
+function showValidationInfo(input, message) {
+    clearValidationMessages();
+    document.getElementById('record-validation-success').style.display = 'block';
+    document.getElementById('record-success-message').textContent = message;
+}
+
+function clearValidationMessages() {
+    document.getElementById('record-validation-success').style.display = 'none';
+    document.getElementById('record-validation-error').style.display = 'none';
+    document.getElementById('save-record-btn').disabled = false;
+}
+
+// DNS Mode validation
+function updateDNSMode() {
+    const recursive = document.getElementById('recursive_enabled').checked;
+    const authoritative = document.getElementById('authoritative_enabled').checked;
+    const forwarder = document.getElementById('forwarder_enabled').checked;
+    const warningsDiv = document.getElementById('dns-mode-warnings');
+
+    let warnings = [];
+
+    if (!recursive && !authoritative && !forwarder) {
+        warnings.push('<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i><strong>Fehler:</strong> Mindestens ein DNS-Modus muss aktiviert sein!</div>');
+    }
+
+    if (recursive && authoritative) {
+        warnings.push('<div class="alert alert-warning"><i class="fas fa-info-circle me-2"></i><strong>Hinweis:</strong> Recursive und Authoritative Modi können Konflikte verursachen. Prüfen Sie Ihre Konfiguration.</div>');
+    }
+
+    if (forwarder && !recursive) {
+        warnings.push('<div class="alert alert-info"><i class="fas fa-lightbulb me-2"></i><strong>Tipp:</strong> Conditional Forwarder funktioniert am besten mit aktiviertem Recursive Modus.</div>');
+    }
+
+    warningsDiv.innerHTML = warnings.join('');
+}
+
+// Recursive settings validation
+function validateRecursionTimeout() {
+    const input = document.getElementById('recursion_timeout');
+    const value = parseInt(input.value);
+
+    if (value < 1 || value > 60) {
+        input.classList.add('is-invalid');
+        document.getElementById('recursion_timeout_feedback').textContent = 'Timeout muss zwischen 1 und 60 Sekunden liegen';
+    } else if (value < 5) {
+        input.classList.add('is-valid');
+        document.getElementById('recursion_timeout_feedback').textContent = 'Sehr kurzer Timeout - kann zu vielen Fehlern führen';
+    } else {
+        input.classList.add('is-valid');
+        input.classList.remove('is-invalid');
+    }
+}
+
+function validateRecursionDepth() {
+    const input = document.getElementById('recursion_depth');
+    const value = parseInt(input.value);
+
+    if (value < 1 || value > 30) {
+        input.classList.add('is-invalid');
+        document.getElementById('recursion_depth_feedback').textContent = 'Recursion Depth muss zwischen 1 und 30 liegen';
+    } else if (value > 20) {
+        input.classList.add('is-valid');
+        document.getElementById('recursion_depth_feedback').textContent = 'Hoher Wert - kann Performance beeinträchtigen';
+    } else {
+        input.classList.add('is-valid');
+        input.classList.remove('is-invalid');
+    }
+}
+
+function validateQueryRateLimit() {
+    const input = document.getElementById('query_rate_limit');
+    const value = parseInt(input.value);
+
+    if (value < 10 || value > 10000) {
+        input.classList.add('is-invalid');
+        document.getElementById('query_rate_limit_feedback').textContent = 'Rate Limit muss zwischen 10 und 10.000 liegen';
+    } else {
+        input.classList.add('is-valid');
+        input.classList.remove('is-invalid');
+    }
+}
+
+function validateClientSubnet() {
+    const input = document.getElementById('client_subnet');
+    const value = input.value.trim();
+
+    if (!value) {
+        input.classList.remove('is-valid', 'is-invalid');
+        return;
+    }
+
+    // CIDR validation
+    const cidrPattern = /^([0-9]{1,3}\.){3}[0-9]{1,3}\/([0-9]|[1-2][0-9]|3[0-2])$/;
+
+    if (cidrPattern.test(value)) {
+        input.classList.add('is-valid');
+        input.classList.remove('is-invalid');
+    } else {
+        input.classList.add('is-invalid');
+        document.getElementById('client_subnet_feedback').textContent = 'Ungültiges CIDR-Format (z.B. 192.168.0.0/16)';
+    }
+}
+
+// API Functions (placeholders)
+async function testDNSServerConnectivity(server) {
+    // In real implementation, this would test the DNS server
+    return new Promise(resolve => {
+        setTimeout(() => resolve(Math.random() > 0.2), 1000);
+    });
+}
+
+function loadDNSZones() {
+    // Load zones from API
+    fetch('/api/dns_zones')
+        .then(response => response.json())
+        .then(zones => {
+            updateZonesTable(zones);
+        })
+        .catch(error => console.error('Error loading DNS zones:', error));
+}
+
+function loadDNSRecords() {
+    // Load records from API
+    fetch('/api/dns_records')
+        .then(response => response.json())
+        .then(records => {
+            updateRecordsTable(records);
+        })
+        .catch(error => console.error('Error loading DNS records:', error));
+}
+
+function addRecord() {
+    const modal = new bootstrap.Modal(document.getElementById('addRecordModal'));
+    modal.show();
+}
+
+function addRecordType(type) {
+    document.getElementById('record_type').value = type;
+    updateRecordFields();
+    addRecord();
+}
+
+function updateValidationStatus() {
+    // Update validation status in the sidebar
+    document.getElementById('validation-status').innerHTML = `
+        <div class="d-flex justify-content-between mb-2">
+            <span>Konfiguration</span>
+            <span class="badge bg-success">Gültig</span>
+        </div>
+        <div class="d-flex justify-content-between mb-2">
+            <span>Root Hints</span>
+            <span class="badge bg-success">Aktuell</span>
+        </div>
+        <div class="d-flex justify-content-between mb-2">
+            <span>Upstream Server</span>
+            <span class="badge bg-success">Erreichbar</span>
+        </div>
+    `;
+}
+
+// Additional helper functions for completeness
+function filterRecords() {
+    const zoneFilter = document.getElementById('zone-filter').value;
+    const typeFilter = document.getElementById('record-type-filter').value;
+    // Implementation for filtering records
+}
+
+function editZone(zoneName) { /* Implementation */ }
+function deleteZone(zoneName) { /* Implementation */ }
+function validateZone(zoneName) { /* Implementation */ }
+function saveZone() { /* Implementation */ }
+function saveRecord() { /* Implementation */ }
+
+// Initialize charts and other components
+function initializeCharts() {
+    // Performance chart implementation
+    const ctx = document.getElementById('recursive-performance-chart');
+    if (ctx) {
+        new Chart(ctx.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: ['1h', '2h', '3h', '4h', '5h', '6h'],
+                datasets: [{
+                    label: 'Response Time (ms)',
+                    data: [12, 15, 13, 18, 14, 16],
+                    borderColor: '#2563eb',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
+}
+
+// Initialize charts when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+});
+</script>
+{% endblock %}

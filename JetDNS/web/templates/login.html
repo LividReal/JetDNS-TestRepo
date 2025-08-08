@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Advanced DNS Server</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .logo {
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem auto;
+        }
+
+        .form-floating .form-control {
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .form-floating .form-control:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.25);
+        }
+
+        .btn-login {
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            border: none;
+            border-radius: 12px;
+            padding: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+        }
+
+        .features-list {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-top: 2rem;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .feature-item i {
+            margin-right: 0.5rem;
+            width: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="login-card">
+                        <div class="logo">
+                            <i class="fas fa-shield-alt fa-2x text-white"></i>
+                        </div>
+
+                        <h2 class="text-center mb-1">Advanced DNS Server</h2>
+                        <p class="text-center text-muted mb-4">Sicheres DNS mit Enterprise-Features</p>
+
+                        <!-- Flash Messages -->
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                            {% if messages %}
+                                {% for category, message in messages %}
+                                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                        {{ message }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        {% endwith %}
+
+                        <form method="POST" class="needs-validation" novalidate>
+                            <div class="form-floating mb-3">
+                                <input type="text" class="form-control" id="username" name="username" 
+                                       placeholder="Benutzername" required>
+                                <label for="username">
+                                    <i class="fas fa-user me-1"></i>Benutzername
+                                </label>
+                                <div class="invalid-feedback">
+                                    Bitte geben Sie einen Benutzernamen ein.
+                                </div>
+                            </div>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anmeldung - JetDNS</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+        }
+
+        .login-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .login-logo {
+            font-size: 4rem;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+        }
+
+        .login-title {
+            color: #1f2937;
+            margin-bottom: 30px;
+            font-weight: 600;
+        }
+
+        .form-floating {
+            margin-bottom: 20px;
+        }
+
+        .form-control {
+            border-radius: 15px;
+            border: 2px solid #e5e7eb;
+            padding: 12px 20px;
+            height: 60px;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.25);
+        }
+
+        .btn-login {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+            border-radius: 15px;
+            padding: 15px 30px;
+            width: 100%;
+            font-weight: 600;
+            color: white;
+            transition: transform 0.2s ease;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            color: white;
+        }
+
+        .alert {
+            border-radius: 15px;
+            border: none;
+            margin-bottom: 25px;
+        }
+
+        .login-footer {
+            margin-top: 30px;
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #6b7280;
+            z-index: 10;
+        }
+
+        .password-field {
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <!-- Logo -->
+            <div class="login-logo">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+
+            <h2 class="login-title">Anmelden</h2>
+            <p class="text-muted mb-4">Melden Sie sich bei JetDNS an</p>
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' else 'info-circle' if category == 'info' else 'check-circle' }} me-2"></i>
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Login Form -->
+            <form method="POST" id="loginForm">
+                <div class="form-floating">
+                    <input type="text" class="form-control" id="username" name="username" 
+                           placeholder="Benutzername oder E-Mail" required>
+                    <label for="username">
+                        <i class="fas fa-user me-2"></i>Benutzername oder E-Mail
+                    </label>
+                </div>
+
+                <div class="form-floating password-field">
+                    <input type="password" class="form-control" id="password" name="password" 
+                           placeholder="Passwort" required>
+                    <label for="password">
+                        <i class="fas fa-lock me-2"></i>Passwort
+                    </label>
+                    <i class="fas fa-eye password-toggle" id="togglePassword"></i>
+                </div>
+
+                <button type="submit" class="btn btn-login">
+                    <i class="fas fa-sign-in-alt me-2"></i>Anmelden
+                </button>
+            </form>
+
+            <div class="login-footer">
+                <p class="mb-0">© 2025 JetDNS - Sicherer DNS Server</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Passwort sichtbar machen
+        document.getElementById('togglePassword').addEventListener('click', function() {
+            const password = document.getElementById('password');
+            const icon = this;
+
+            if (password.type === 'password') {
+                password.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                password.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        });
+
+        // Form-Validierung
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+
+            if (!username || !password) {
+                e.preventDefault();
+                alert('Bitte füllen Sie alle Felder aus.');
+                return false;
+            }
+
+            if (password.length < 3) {
+                e.preventDefault();
+                alert('Passwort zu kurz.');
+                return false;
+            }
+        });
+
+        // Auto-focus auf erstes Feld
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('username').focus();
+        });
+    </script>
+</body>
+</html>
+                            <div class="form-floating mb-4">
+                                <input type="password" class="form-control" id="password" name="password" 
+                                       placeholder="Passwort" required>
+                                <label for="password">
+                                    <i class="fas fa-lock me-1"></i>Passwort
+                                </label>
+                                <div class="invalid-feedback">
+                                    Bitte geben Sie ein Passwort ein.
+                                </div>
+                                <div class="position-absolute top-50 end-0 translate-middle-y me-3">
+                                    <i class="fas fa-eye cursor-pointer" id="togglePassword" 
+                                       onclick="togglePasswordVisibility()"></i>
+                                </div>
+                            </div>
+
+                            <div class="form-check mb-4">
+                                <input class="form-check-input" type="checkbox" id="rememberMe" name="remember">
+                                <label class="form-check-label" for="rememberMe">
+                                    Angemeldet bleiben
+                                </label>
+                            </div>
+
+                            <button type="submit" class="btn btn-login btn-primary w-100 mb-3">
+                                <i class="fas fa-sign-in-alt me-2"></i>Anmelden
+                            </button>
+                        </form>
+
+                        <div class="text-center">
+                            <small class="text-muted">
+                                Standard: admin / admin123
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Features Overview -->
+                    <div class="features-list">
+                        <h6 class="text-white mb-3">
+                            <i class="fas fa-star me-2"></i>Hauptfeatures
+                        </h6>
+
+                        <div class="feature-item">
+                            <i class="fas fa-shield-virus"></i>
+                            <span>Echtzeit Threat Intelligence</span>
+                        </div>
+
+                        <div class="feature-item">
+                            <i class="fas fa-filter"></i>
+                            <span>Erweiterte Content-Filterung</span>
+                        </div>
+
+                        <div class="feature-item">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Hochperformante DNS-Auflösung</span>
+                        </div>
+
+                        <div class="feature-item">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Umfassende Analytics</span>
+                        </div>
+
+                        <div class="feature-item">
+                            <i class="fas fa-network-wired"></i>
+                            <span>Netzwerk-Monitoring</span>
+                        </div>
+
+                        <div class="feature-item">
+                            <i class="fas fa-cog"></i>
+                            <span>Enterprise-Management</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Form validation
+        (() => {
+            'use strict';
+
+            const forms = document.querySelectorAll('.needs-validation');
+
+            Array.from(forms).forEach(form => {
+                form.addEventListener('submit', event => {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        })();
+
+        // Toggle password visibility
+        function togglePasswordVisibility() {
+            const passwordField = document.getElementById('password');
+            const toggleIcon = document.getElementById('togglePassword');
+
+            if (passwordField.type === 'password') {
+                passwordField.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordField.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+        }
+
+        // Auto-focus username field
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('username').focus();
+        });
+    </script>
+</body>
+</html>

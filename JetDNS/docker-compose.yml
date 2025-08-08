@@ -1,0 +1,157 @@
+version: '3.8'
+
+services:
+  jetdns:
+    build: .
+    container_name: jetdns-server
+    hostname: jetdns
+    restart: unless-stopped
+
+    # Ports
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+      - "80:80/tcp"
+      # - "443:443/tcp"  # Für HTTPS
+
+    # Umgebungsvariablen
+    environment:
+      - DNS_PORT=53
+      - WEB_PORT=80
+      - DNS_UPSTREAM=8.8.8.8,1.1.1.1,9.9.9.9
+      - ENABLE_WEB=true
+      - ENABLE_THREAT_INTEL=true
+      - ENABLE_AD_BLOCKING=true
+      - LOG_LEVEL=INFO
+      - TZ=Europe/Berlin
+
+    # Volumes für Persistenz
+    volumes:
+      - jetdns_config:/etc/jetdns
+      - jetdns_logs:/var/log/jetdns
+      - jetdns_data:/var/lib/jetdns
+      # Für Custom Configs:
+      # - ./config/jetdns.conf:/etc/jetdns/jetdns.conf:ro
+
+    # Capabilities für DNS Port 53
+    cap_add:
+      - NET_BIND_SERVICE
+
+    # Security
+    security_opt:
+      - no-new-privileges:true
+
+    # Health Check
+    healthcheck:
+      test: ["CMD", "dig", "@127.0.0.1", "google.com"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Labels
+    labels:
+      - "com.jetdns.description=JetDNS DNS Server"
+      - "com.jetdns.version=1.0.0"
+
+  # Optional: Separater Redis Container
+  redis:
+    image: redis:7-alpine
+    container_name: jetdns-redis
+    hostname: jetdns-redis
+    restart: unless-stopped
+
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+
+    volumes:
+      - jetdns_redis:/data
+
+    # Internal network only
+    expose:
+      - "6379"
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  # Optional: Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: jetdns-prometheus
+    hostname: prometheus
+    restart: unless-stopped
+
+    ports:
+      - "9090:9090"
+
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - jetdns_prometheus:/prometheus
+
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+
+    depends_on:
+      - jetdns
+
+  # Optional: Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: jetdns-grafana
+    hostname: grafana
+    restart: unless-stopped
+
+    ports:
+      - "3000:3000"
+
+    volumes:
+      - jetdns_grafana:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=jetdns123
+      - GF_USERS_ALLOW_SIGN_UP=false
+
+    depends_on:
+      - prometheus
+
+volumes:
+  jetdns_config:
+    driver: local
+  jetdns_logs:
+    driver: local
+  jetdns_data:
+    driver: local
+  jetdns_redis:
+    driver: local
+  jetdns_prometheus:
+    driver: local
+  jetdns_grafana:
+    driver: local
+
+networks:
+  default:
+    name: jetdns-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

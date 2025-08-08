@@ -1,0 +1,1468 @@
+{% extends "base.html" %}
+
+{% block title %}Einstellungen - Advanced DNS Server{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3 mb-0">Einstellungen</h1>
+            <p class="text-muted">Konfiguration des DNS-Servers und aller Features</p>
+        </div>
+        <div class="col-auto">
+            <div class="btn-group">
+                <button class="btn btn-success" onclick="saveAllSettings()">
+                    <i class="fas fa-save me-1"></i>Alle Änderungen speichern
+                </button>
+                <button class="btn btn-outline-secondary" onclick="resetToDefaults()">
+                    <i class="fas fa-undo me-1"></i>Zurücksetzen
+                </button>
+                <button class="btn btn-outline-info" onclick="exportConfig()">
+                    <i class="fas fa-download me-1"></i>Konfiguration exportieren
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Navigation -->
+    <div class="row mb-4">
+        <div class="col">
+            <ul class="nav nav-pills" id="settings-tabs" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#dns-settings">
+                        <i class="fas fa-server me-1"></i>DNS Server
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#security-settings">
+                        <i class="fas fa-shield-alt me-1"></i>Sicherheit
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#filtering-settings">
+                        <i class="fas fa-filter me-1"></i>Filterung
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#performance-settings">
+                        <i class="fas fa-tachometer-alt me-1"></i>Performance
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#logging-settings">
+                        <i class="fas fa-list-alt me-1"></i>Logging
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#advanced-settings">
+                        <i class="fas fa-cogs me-1"></i>Erweitert
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="tab-content">
+        <!-- DNS Server Settings -->
+        <div class="tab-pane fade show active" id="dns-settings">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">DNS Server Konfiguration</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Listen Address</label>
+                                    <input type="text" class="form-control" id="listen_address" value="0.0.0.0">
+                                    <div class="form-text">IP-Adresse auf der der Server horcht</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Listen Port</label>
+                                    <input type="number" class="form-control" id="listen_port" value="53" min="1" max="65535">
+                                    <div class="form-text">Standard DNS Port (53)</div>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label">Upstream DNS Server</label>
+                                <div id="upstream-servers">
+                                    <div class="input-group mb-2">
+                                        <input type="text" class="form-control" value="8.8.8.8" placeholder="DNS Server IP">
+                                        <button class="btn btn-outline-danger" onclick="removeUpstreamServer(this)">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                    <div class="input-group mb-2">
+                                        <input type="text" class="form-control" value="8.8.4.4" placeholder="DNS Server IP">
+                                        <button class="btn btn-outline-danger" onclick="removeUpstreamServer(this)">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                    <div class="input-group mb-2">
+                                        <input type="text" class="form-control" value="1.1.1.1" placeholder="DNS Server IP">
+                                        <button class="btn btn-outline-danger" onclick="removeUpstreamServer(this)">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <button class="btn btn-outline-primary btn-sm" onclick="addUpstreamServer()">
+                                    <i class="fas fa-plus me-1"></i>Server hinzufügen
+                                </button>
+                            </div>
+
+                            <div class="mb-3">
+                                <h6>Protokoll-Unterstützung</h6>
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="udp_enabled" checked>
+                                            <label class="form-check-label" for="udp_enabled">UDP</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="tcp_enabled" checked>
+                                            <label class="form-check-label" for="tcp_enabled">TCP</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="doh_enabled">
+                                            <label class="form-check-label" for="doh_enabled">DNS-over-HTTPS</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="dot_enabled">
+                                            <label class="form-check-label" for="dot_enabled">DNS-over-TLS</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label">DoH Port</label>
+                                    <input type="number" class="form-control" id="doh_port" value="443">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">DoT Port</label>
+                                    <input type="number" class="form-control" id="dot_port" value="853">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Server Status</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>DNS Server</span>
+                                <span class="badge bg-success">Läuft</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Upstream Verbindungen</span>
+                                <span class="badge bg-success">3/3</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>SSL/TLS Status</span>
+                                <span class="badge bg-warning">Nicht konfiguriert</span>
+                            </div>
+                            <hr>
+                            <button class="btn btn-primary btn-sm w-100 mb-2" onclick="restartDNSServer()">
+                                <i class="fas fa-sync me-1"></i>DNS Server Neustarten
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm w-100" onclick="testDNSServer()">
+                                <i class="fas fa-stethoscope me-1"></i>Server Testen
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Settings -->
+        <div class="tab-pane fade" id="security-settings">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Threat Intelligence</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="threat_intelligence_enabled" checked>
+                                <label class="form-check-label" for="threat_intelligence_enabled">
+                                    Threat Intelligence aktiviert
+                                </label>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Threat Detection Level</label>
+                                <select class="form-select" id="threat_detection_level">
+                                    <option value="low">Niedrig - Nur kritische Bedrohungen</option>
+                                    <option value="medium" selected>Mittel - Standard Schutz</option>
+                                    <option value="high">Hoch - Maximaler Schutz</option>
+                                    <option value="paranoid">Paranoid - Alle verdächtigen Domains</option>
+                                </select>
+                            </div>
+
+                            <h6>Bedrohungskategorien</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="malware_protection" checked>
+                                        <label class="form-check-label" for="malware_protection">Malware</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="phishing_protection" checked>
+                                        <label class="form-check-label" for="phishing_protection">Phishing</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="botnet_protection" checked>
+                                        <label class="form-check-label" for="botnet_protection">Botnet</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="cryptomining_protection" checked>
+                                        <label class="form-check-label" for="cryptomining_protection">Cryptomining</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="newly_seen_domains" checked>
+                                        <label class="form-check-label" for="newly_seen_domains">Neue Domains</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="dga_detection" checked>
+                                        <label class="form-check-label" for="dga_detection">DGA Erkennung</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="dns_tunneling_detection" checked>
+                                        <label class="form-check-label" for="dns_tunneling_detection">DNS Tunneling</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="suspicious_domains" checked>
+                                        <label class="form-check-label" for="suspicious_domains">Verdächtige Domains</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Threat Intelligence Feeds</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Feed Name</th>
+                                            <th>Status</th>
+                                            <th>Domains</th>
+                                            <th>Letztes Update</th>
+                                            <th>Aktionen</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="threat-feeds-list">
+                                        <tr>
+                                            <td>Malware Domain Blocklist</td>
+                                            <td><span class="badge bg-success">Aktiv</span></td>
+                                            <td>45,231</td>
+                                            <td>vor 2 Stunden</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary">Update</button>
+                                                <button class="btn btn-sm btn-outline-danger">Deaktivieren</button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Phishing Army</td>
+                                            <td><span class="badge bg-success">Aktiv</span></td>
+                                            <td>12,458</td>
+                                            <td>vor 1 Stunde</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary">Update</button>
+                                                <button class="btn btn-sm btn-outline-danger">Deaktivieren</button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Abuse.ch URLhaus</td>
+                                            <td><span class="badge bg-success">Aktiv</span></td>
+                                            <td>8,721</td>
+                                            <td>vor 30 Min</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary">Update</button>
+                                                <button class="btn btn-sm btn-outline-danger">Deaktivieren</button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button class="btn btn-outline-primary" onclick="addThreatFeed()">
+                                <i class="fas fa-plus me-1"></i>Feed hinzufügen
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Sicherheitsstatistiken (24h)</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Bedrohungen erkannt</span>
+                                <span class="fw-bold text-danger">1,247</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Malware blockiert</span>
+                                <span class="fw-bold">856</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Phishing blockiert</span>
+                                <span class="fw-bold">391</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Sicherheitsbewertung</span>
+                                <span class="fw-bold text-success">Excellent</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Aktionen</h6>
+                        </div>
+                        <div class="card-body">
+                            <button class="btn btn-primary btn-sm w-100 mb-2" onclick="updateAllFeeds()">
+                                <i class="fas fa-sync me-1"></i>Alle Feeds aktualisieren
+                            </button>
+                            <button class="btn btn-outline-warning btn-sm w-100 mb-2" onclick="flushThreatCache()">
+                                <i class="fas fa-broom me-1"></i>Threat Cache leeren
+                            </button>
+                            <button class="btn btn-outline-info btn-sm w-100" onclick="exportThreatLog()">
+                                <i class="fas fa-download me-1"></i>Threat Log exportieren
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Filtering Settings -->
+        <div class="tab-pane fade" id="filtering-settings">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Content Filtering</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-check form-switch mb-4">
+                                <input class="form-check-input" type="checkbox" id="content_filtering_enabled" checked>
+                                <label class="form-check-label" for="content_filtering_enabled">
+                                    Content Filtering aktiviert
+                                </label>
+                            </div>
+
+                            <h6>Web Content Kategorien</h6>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h6 class="text-danger">Sicherheit</h6>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="cat_malware" checked>
+                                        <label class="form-check-label" for="cat_malware">Malware</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="cat_phishing" checked>
+                                        <label class="form-check-label" for="cat_phishing">Phishing</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="cat_proxy" checked>
+                                        <label class="form-check-label" for="cat_proxy">Proxy/Anonymizer</label>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <h6 class="text-warning">Produktivität</h6>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="cat_social">
+                                        <label class="form-check-label" for="cat_social">Social Media</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="cat_streaming">
+                                        <label class="form-check-label" for="cat_streaming">Streaming</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="cat_games">
+                                        <label class="form-check-label" for="cat_games">Spiele</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="cat_shopping">
+                                        <label class="form-check-label" for="cat_shopping">Shopping</label>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <h6 class="text-info">Inhalt</h6>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="cat_adult">
+                                        <label class="form-check-label" for="cat_adult">Jugendschutz</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="cat_gambling">
+                                        <label class="form-check-label" for="cat_gambling">Glücksspiel</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="cat_drugs">
+                                        <label class="form-check-label" for="cat_drugs">Drogen</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="cat_violence">
+                                        <label class="form-check-label" for="cat_violence">Gewalt</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr>
+
+                            <h6>Safe Search</h6>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="safe_search_enabled">
+                                        <label class="form-check-label" for="safe_search_enabled">Safe Search</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="safe_search_google">
+                                        <label class="form-check-label" for="safe_search_google">Google</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="safe_search_bing">
+                                        <label class="form-check-label" for="safe_search_bing">Bing</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="safe_search_youtube">
+                                        <label class="form-check-label" for="safe_search_youtube">YouTube</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Zeit-basierte Filterung</h5>
+                            <button class="btn btn-sm btn-outline-primary" onclick="addTimeSchedule()">
+                                <i class="fas fa-plus me-1"></i>Zeitplan hinzufügen
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Kategorien</th>
+                                            <th>Zeit</th>
+                                            <th>Tage</th>
+                                            <th>Aktionen</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="time-schedules-list">
+                                        <tr>
+                                            <td>Arbeitszeit</td>
+                                            <td>Social Media, Streaming, Spiele</td>
+                                            <td>09:00 - 17:00</td>
+                                            <td>Mo - Fr</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-secondary">Bearbeiten</button>
+                                                <button class="btn btn-sm btn-outline-danger">Löschen</button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Filterungsstatistiken</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="filtering-stats-chart" height="200"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Top blockierte Kategorien</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Social Media</span>
+                                <span class="fw-bold">2,156</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Streaming</span>
+                                <span class="fw-bold">1,423</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Spiele</span>
+                                <span class="fw-bold">892</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Shopping</span>
+                                <span class="fw-bold">567</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Settings -->
+        <div class="tab-pane fade" id="performance-settings">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Cache Einstellungen</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Cache Größe (Einträge)</label>
+                                    <input type="number" class="form-control" id="cache_size" value="10000">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Cache TTL (Sekunden)</label>
+                                    <input type="number" class="form-control" id="cache_ttl" value="3600">
+                                </div>
+                            </div>
+
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="aggressive_caching" checked>
+                                <label class="form-check-label" for="aggressive_caching">
+                                    Aggressives Caching
+                                </label>
+                            </div>
+
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="negative_caching" checked>
+                                <label class="form-check-label" for="negative_caching">
+                                    Negative Responses cachen
+                                </label>
+                            </div>
+
+                            <h6>Redis Konfiguration</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label">Redis Host</label>
+                                    <input type="text" class="form-control" id="redis_host" value="localhost">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Redis Port</label>
+                                    <input type="number" class="form-control" id="redis_port" value="6379">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Load Balancing</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="load_balancing_enabled">
+                                <label class="form-check-label" for="load_balancing_enabled">
+                                    Load Balancing aktiviert
+                                </label>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Algorithmus</label>
+                                <select class="form-select" id="load_balancing_algorithm">
+                                    <option value="round_robin" selected>Round Robin</option>
+                                    <option value="least_connections">Least Connections</option>
+                                    <option value="response_time">Response Time</option>
+                                    <option value="weighted">Weighted</option>
+                                </select>
+                            </div>
+
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="health_checks_enabled" checked>
+                                <label class="form-check-label" for="health_checks_enabled">
+                                    Health Checks
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Performance Metriken</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Durchschn. Antwortzeit</span>
+                                <span class="fw-bold text-success">12ms</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Cache Hit Rate</span>
+                                <span class="fw-bold text-primary">87.3%</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Queries/Sekunde</span>
+                                <span class="fw-bold">156</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>CPU Usage</span>
+                                <span class="fw-bold text-warning">23%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Cache Aktionen</h6>
+                        </div>
+                        <div class="card-body">
+                            <button class="btn btn-warning btn-sm w-100 mb-2" onclick="flushAllCache()">
+                                <i class="fas fa-broom me-1"></i>Gesamten Cache leeren
+                            </button>
+                            <button class="btn btn-outline-info btn-sm w-100 mb-2" onclick="warmCache()">
+                                <i class="fas fa-fire me-1"></i>Cache vorwärmen
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm w-100" onclick="analyzeCachePerformance()">
+                                <i class="fas fa-chart-bar me-1"></i>Cache analysieren
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logging Settings -->
+        <div class="tab-pane fade" id="logging-settings">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Logging Konfiguration</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Log Level</label>
+                                    <select class="form-select" id="log_level">
+                                        <option value="DEBUG">Debug</option>
+                                        <option value="INFO" selected>Info</option>
+                                        <option value="WARNING">Warning</option>
+                                        <option value="ERROR">Error</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Log Retention (Tage)</label>
+                                    <input type="number" class="form-control" id="log_retention" value="30">
+                                </div>
+                            </div>
+
+                            <h6>Was soll geloggt werden?</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="log_queries" checked>
+                                        <label class="form-check-label" for="log_queries">DNS Queries</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="log_blocked" checked>
+                                        <label class="form-check-label" for="log_blocked">Blockierte Queries</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="log_security_events" checked>
+                                        <label class="form-check-label" for="log_security_events">Security Events</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="log_performance">
+                                        <label class="form-check-label" for="log_performance">Performance Metriken</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="log_config_changes" checked>
+                                        <label class="form-check-label" for="log_config_changes">Konfigurationsänderungen</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="log_admin_actions" checked>
+                                        <label class="form-check-label" for="log_admin_actions">Admin Aktionen</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr>
+
+                            <h6>Export Einstellungen</h6>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="export_syslog">
+                                        <label class="form-check-label" for="export_syslog">Syslog</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="export_splunk">
+                                        <label class="form-check-label" for="export_splunk">Splunk</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="export_elasticsearch">
+                                        <label class="form-check-label" for="export_elasticsearch">Elasticsearch</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Log Statistiken</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Log Größe</span>
+                                <span class="fw-bold">2.3 GB</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Einträge heute</span>
+                                <span class="fw-bold">156,789</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Errors heute</span>
+                                <span class="fw-bold text-warning">23</span>
+                            </div>
+                            <hr>
+                            <button class="btn btn-outline-info btn-sm w-100 mb-2" onclick="downloadLogs()">
+                                <i class="fas fa-download me-1"></i>Logs herunterladen
+                            </button>
+                            <button class="btn btn-outline-warning btn-sm w-100 mb-2" onclick="rotateLogs()">
+                                <i class="fas fa-sync me-1"></i>Log Rotation
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm w-100" onclick="clearLogs()">
+                                <i class="fas fa-trash me-1"></i>Logs löschen
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Settings -->
+        <div class="tab-pane fade" id="advanced-settings">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Enterprise Features</h5>
+                        </div>
+                        <div class="card-body">
+                            <h6>Authoritative DNS</h6>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="authoritative_enabled">
+                                <label class="form-check-label" for="authoritative_enabled">
+                                    Authoritative DNS Server
+                                </label>
+                            </div>
+
+                            <h6>GeoDNS</h6>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="geo_dns_enabled">
+                                <label class="form-check-label" for="geo_dns_enabled">
+                                    GeoDNS aktiviert
+                                </label>
+                            </div>
+
+                            <h6>DNSSEC</h6>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="dnssec_enabled">
+                                <label class="form-check-label" for="dnssec_enabled">
+                                    DNSSEC Validierung
+                                </label>
+                            </div>
+
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="dnssec_signing">
+                                <label class="form-check-label" for="dnssec_signing">
+                                    DNSSEC Signing (für authoritative zones)
+                                </label>
+                            </div>
+
+                            <hr>
+
+                            <h6>API Einstellungen</h6>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="api_enabled" checked>
+                                <label class="form-check-label" for="api_enabled">
+                                    REST API aktiviert
+                                </label>
+                            </div>
+
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="api_key_required">
+                                <label class="form-check-label" for="api_key_required">
+                                    API Key erforderlich
+                                </label>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Rate Limit (Requests/Minute)</label>
+                                <input type="number" class="form-control" id="api_rate_limit" value="100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Monitoring & Integration</h5>
+                        </div>
+                        <div class="card-body">
+                            <h6>SIEM Integration</h6>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="siem_enabled">
+                                <label class="form-check-label" for="siem_enabled">
+                                    SIEM Export aktiviert
+                                </label>
+                            </div>
+
+                            <h6>Prometheus Metriken</h6>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="prometheus_enabled">
+                                <label class="form-check-label" for="prometheus_enabled">
+                                    Prometheus Endpoint
+                                </label>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Metriken Port</label>
+                                <input type="number" class="form-control" id="prometheus_port" value="9090">
+                            </div>
+
+                            <h6>Webhooks</h6>
+                            <div class="mb-3">
+                                <label class="form-label">Security Alert Webhook</label>
+                                <input type="url" class="form-control" id="security_webhook" placeholder="https://hooks.slack.com/...">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">System Information</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Version</span>
+                                <span class="fw-bold">v2.1.0</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Python</span>
+                                <span class="fw-bold">3.10.11</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Uptime</span>
+                                <span class="fw-bold">7d 12h 34m</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Memory Usage</span>
+                                <span class="fw-bold">256MB</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Maintenance</h6>
+                        </div>
+                        <div class="card-body">
+                            <button class="btn btn-warning btn-sm w-100 mb-2" onclick="restartServer()">
+                                <i class="fas fa-sync me-1"></i>Server Neustarten
+                            </button>
+                            <button class="btn btn-outline-info btn-sm w-100 mb-2" onclick="checkUpdates()">
+                                <i class="fas fa-cloud-download-alt me-1"></i>Updates prüfen
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm w-100 mb-2" onclick="generateReport()">
+                                <i class="fas fa-file-alt me-1"></i>System Report
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm w-100" onclick="factoryReset()">
+                                <i class="fas fa-exclamation-triangle me-1"></i>Factory Reset
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Time Schedule Modal -->
+<div class="modal fade" id="addTimeScheduleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Zeitplan hinzufügen</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="time-schedule-form">
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control" id="schedule_name" required>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Startzeit</label>
+                            <input type="time" class="form-control" id="schedule_start" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Endzeit</label>
+                            <input type="time" class="form-control" id="schedule_end" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Wochentage</label>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="day_monday">
+                                    <label class="form-check-label" for="day_monday">Montag</label>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="day_tuesday">
+                                    <label class="form-check-label" for="day_tuesday">Dienstag</label>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="day_wednesday">
+                                    <label class="form-check-label" for="day_wednesday">Mittwoch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="day_thursday">
+                                    <label class="form-check-label" for="day_thursday">Donnerstag</label>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="day_friday">
+                                    <label class="form-check-label" for="day_friday">Freitag</label>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="day_saturday">
+                                    <label class="form-check-label" for="day_saturday">Samstag</label>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="day_sunday">
+                                    <label class="form-check-label" for="day_sunday">Sonntag</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Zu blockierende Kategorien</label>
+                        <select class="form-select" id="schedule_categories" multiple>
+                            <option value="social_media">Social Media</option>
+                            <option value="streaming">Streaming</option>
+                            <option value="games">Spiele</option>
+                            <option value="shopping">Shopping</option>
+                            <option value="adult">Jugendschutz</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                <button type="button" class="btn btn-primary" onclick="saveTimeSchedule()">Speichern</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let settingsChanged = false;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadCurrentSettings();
+    setupEventListeners();
+    initializeCharts();
+});
+
+function loadCurrentSettings() {
+    // Load current settings from server
+    fetch('/api/settings')
+        .then(response => response.json())
+        .then(settings => {
+            populateSettingsForm(settings);
+        })
+        .catch(error => {
+            console.error('Error loading settings:', error);
+            showToast('Fehler beim Laden der Einstellungen', 'error');
+        });
+}
+
+function populateSettingsForm(settings) {
+    // Populate DNS settings
+    if (settings.dns_server) {
+        document.getElementById('listen_address').value = settings.dns_server.listen_address || '0.0.0.0';
+        document.getElementById('listen_port').value = settings.dns_server.listen_port || 53;
+        document.getElementById('doh_port').value = settings.dns_server.doh_port || 443;
+        document.getElementById('dot_port').value = settings.dns_server.dot_port || 853;
+
+        document.getElementById('doh_enabled').checked = settings.dns_server.doh_enabled || false;
+        document.getElementById('dot_enabled').checked = settings.dns_server.dot_enabled || false;
+    }
+
+    // Populate security settings
+    if (settings.security) {
+        document.getElementById('threat_intelligence_enabled').checked = 
+            settings.security.threat_intelligence?.enabled || false;
+
+        const threatLevel = settings.security.threat_intelligence?.level || 'medium';
+        document.getElementById('threat_detection_level').value = threatLevel;
+    }
+
+    // Populate filtering settings
+    if (settings.content_filtering) {
+        document.getElementById('content_filtering_enabled').checked = 
+            settings.content_filtering.enabled || false;
+
+        // Populate category checkboxes
+        const categories = settings.content_filtering.categories || {};
+        Object.keys(categories).forEach(category => {
+            const element = document.getElementById(`cat_${category}`);
+            if (element) {
+                element.checked = categories[category];
+            }
+        });
+    }
+
+    // Populate performance settings
+    if (settings.performance) {
+        document.getElementById('cache_size').value = settings.performance.cache_size || 10000;
+        document.getElementById('cache_ttl').value = settings.performance.cache_ttl || 3600;
+        document.getElementById('load_balancing_enabled').checked = 
+            settings.performance.load_balancing?.enabled || false;
+    }
+
+    // Mark form as clean
+    settingsChanged = false;
+}
+
+function setupEventListeners() {
+    // Mark form as dirty when changes are made
+    document.querySelectorAll('input, select, textarea').forEach(element => {
+        element.addEventListener('change', function() {
+            settingsChanged = true;
+        });
+    });
+
+    // Warn about unsaved changes
+    window.addEventListener('beforeunload', function(e) {
+        if (settingsChanged) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+}
+
+function saveAllSettings() {
+    if (!settingsChanged) {
+        showToast('Keine Änderungen zum Speichern', 'info');
+        return;
+    }
+
+    const settings = collectAllSettings();
+
+    fetch('/api/settings', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(settings)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showToast('Einstellungen erfolgreich gespeichert', 'success');
+            settingsChanged = false;
+        } else {
+            showToast('Fehler beim Speichern der Einstellungen', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving settings:', error);
+        showToast('Fehler beim Speichern der Einstellungen', 'error');
+    });
+}
+
+function collectAllSettings() {
+    const settings = {
+        dns_server: {
+            listen_address: document.getElementById('listen_address').value,
+            listen_port: parseInt(document.getElementById('listen_port').value),
+            doh_enabled: document.getElementById('doh_enabled').checked,
+            dot_enabled: document.getElementById('dot_enabled').checked,
+            doh_port: parseInt(document.getElementById('doh_port').value),
+            dot_port: parseInt(document.getElementById('dot_port').value),
+            upstream_servers: getUpstreamServers()
+        },
+        security: {
+            threat_intelligence: {
+                enabled: document.getElementById('threat_intelligence_enabled').checked,
+                level: document.getElementById('threat_detection_level').value
+            }
+        },
+        content_filtering: {
+            enabled: document.getElementById('content_filtering_enabled').checked,
+            categories: getFilteringCategories(),
+            safe_search: {
+                enabled: document.getElementById('safe_search_enabled').checked,
+                google: document.getElementById('safe_search_google').checked,
+                bing: document.getElementById('safe_search_bing').checked,
+                youtube: document.getElementById('safe_search_youtube').checked
+            }
+        },
+        performance: {
+            cache_size: parseInt(document.getElementById('cache_size').value),
+            cache_ttl: parseInt(document.getElementById('cache_ttl').value),
+            load_balancing: {
+                enabled: document.getElementById('load_balancing_enabled').checked,
+                algorithm: document.getElementById('load_balancing_algorithm').value
+            },
+            redis: {
+                host: document.getElementById('redis_host').value,
+                port: parseInt(document.getElementById('redis_port').value)
+            }
+        },
+        logging: {
+            level: document.getElementById('log_level').value,
+            retention_days: parseInt(document.getElementById('log_retention').value),
+            log_queries: document.getElementById('log_queries').checked,
+            log_blocked: document.getElementById('log_blocked').checked,
+            log_security_events: document.getElementById('log_security_events').checked
+        },
+        advanced: {
+            authoritative_enabled: document.getElementById('authoritative_enabled').checked,
+            geo_dns_enabled: document.getElementById('geo_dns_enabled').checked,
+            dnssec_enabled: document.getElementById('dnssec_enabled').checked,
+            api_enabled: document.getElementById('api_enabled').checked,
+            api_rate_limit: parseInt(document.getElementById('api_rate_limit').value)
+        }
+    };
+
+    return settings;
+}
+
+function getUpstreamServers() {
+    const servers = [];
+    document.querySelectorAll('#upstream-servers input').forEach(input => {
+        if (input.value.trim()) {
+            servers.push(input.value.trim());
+        }
+    });
+    return servers;
+}
+
+function getFilteringCategories() {
+    const categories = {};
+    const categoryCheckboxes = document.querySelectorAll('[id^="cat_"]');
+    categoryCheckboxes.forEach(checkbox => {
+        const category = checkbox.id.replace('cat_', '');
+        categories[category] = checkbox.checked;
+    });
+    return categories;
+}
+
+function addUpstreamServer() {
+    const container = document.getElementById('upstream-servers');
+    const newServer = document.createElement('div');
+    newServer.className = 'input-group mb-2';
+    newServer.innerHTML = `
+        <input type="text" class="form-control" placeholder="DNS Server IP">
+        <button class="btn btn-outline-danger" onclick="removeUpstreamServer(this)">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    container.appendChild(newServer);
+    settingsChanged = true;
+}
+
+function removeUpstreamServer(button) {
+    button.closest('.input-group').remove();
+    settingsChanged = true;
+}
+
+function resetToDefaults() {
+    if (confirm('Sind Sie sicher, dass Sie alle Einstellungen auf die Standardwerte zurücksetzen möchten?')) {
+        fetch('/api/settings/reset', {method: 'POST'})
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showToast('Einstellungen auf Standardwerte zurückgesetzt', 'success');
+                    location.reload();
+                } else {
+                    showToast('Fehler beim Zurücksetzen der Einstellungen', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error resetting settings:', error);
+                showToast('Fehler beim Zurücksetzen der Einstellungen', 'error');
+            });
+    }
+}
+
+function exportConfig() {
+    const settings = collectAllSettings();
+    const dataStr = JSON.stringify(settings, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = 'dns-server-config.json';
+    link.click();
+
+    showToast('Konfiguration exportiert', 'success');
+}
+
+function restartDNSServer() {
+    if (confirm('DNS Server neustarten? Dies kann zu kurzen Unterbrechungen führen.')) {
+        fetch('/api/restart', {method: 'POST'})
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showToast('DNS Server wird neugestartet...', 'info');
+                } else {
+                    showToast('Fehler beim Neustarten des Servers', 'error');
+                }
+            });
+    }
+}
+
+function testDNSServer() {
+    showToast('DNS Server wird getestet...', 'info');
+
+    fetch('/api/test_server', {method: 'POST'})
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                showToast(`DNS Server Test erfolgreich: ${result.response_time}ms`, 'success');
+            } else {
+                showToast(`DNS Server Test fehlgeschlagen: ${result.error}`, 'error');
+            }
+        });
+}
+
+function updateAllFeeds() {
+    showToast('Threat Intelligence Feeds werden aktualisiert...', 'info');
+
+    fetch('/api/update_feeds', {method: 'POST'})
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                showToast(`${result.updated} Feeds erfolgreich aktualisiert`, 'success');
+            } else {
+                showToast('Fehler beim Aktualisieren der Feeds', 'error');
+            }
+        });
+}
+
+function addThreatFeed() {
+    const url = prompt('URL des Threat Intelligence Feeds:');
+    if (url) {
+        fetch('/api/threat_feeds', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({url: url})
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                showToast('Feed erfolgreich hinzugefügt', 'success');
+                location.reload();
+            } else {
+                showToast('Fehler beim Hinzufügen des Feeds', 'error');
+            }
+        });
+    }
+}
+
+function addTimeSchedule() {
+    const modal = new bootstrap.Modal(document.getElementById('addTimeScheduleModal'));
+    modal.show();
+}
+
+function saveTimeSchedule() {
+    const scheduleData = {
+        name: document.getElementById('schedule_name').value,
+        start_time: document.getElementById('schedule_start').value,
+        end_time: document.getElementById('schedule_end').value,
+        days: getSelectedDays(),
+        categories: Array.from(document.getElementById('schedule_categories').selectedOptions)
+                         .map(option => option.value)
+    };
+
+    fetch('/api/time_schedules', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(scheduleData)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showToast('Zeitplan erfolgreich erstellt', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('addTimeScheduleModal')).hide();
+            location.reload();
+        } else {
+            showToast('Fehler beim Erstellen des Zeitplans', 'error');
+        }
+    });
+}
+
+function getSelectedDays() {
+    const days = [];
+    const dayCheckboxes = document.querySelectorAll('[id^="day_"]:checked');
+    dayCheckboxes.forEach(checkbox => {
+        days.push(checkbox.id.replace('day_', ''));
+    });
+    return days;
+}
+
+function flushAllCache() {
+    if (confirm('Gesamten DNS Cache leeren?')) {
+        fetch('/api/flush_cache', {method: 'POST'})
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showToast('Cache erfolgreich geleert', 'success');
+                } else {
+                    showToast('Fehler beim Leeren des Cache', 'error');
+                }
+            });
+    }
+}
+
+function initializeCharts() {
+    // Filtering Statistics Chart
+    const filteringCtx = document.getElementById('filtering-stats-chart');
+    if (filteringCtx) {
+        new Chart(filteringCtx.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Social Media', 'Streaming', 'Spiele', 'Shopping', 'Andere'],
+                datasets: [{
+                    data: [2156, 1423, 892, 567, 234],
+                    backgroundColor: [
+                        '#dc2626',
+                        '#d97706',
+                        '#059669',
+                        '#2563eb',
+                        '#6b7280'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+}
+
+// Additional utility functions
+function restartServer() {
+    if (confirm('Server komplett neustarten? Dies führt zu einer kurzen Unterbrechung.')) {
+        fetch('/api/restart_server', {method: 'POST'})
+            .then(() => {
+                showToast('Server wird neugestartet...', 'warning');
+                setTimeout(() => location.reload(), 5000);
+            });
+    }
+}
+
+function checkUpdates() {
+    showToast('Prüfe auf Updates...', 'info');
+
+    fetch('/api/check_updates')
+        .then(response => response.json())
+        .then(result => {
+            if (result.updates_available) {
+                showToast(`${result.updates.length} Updates verfügbar`, 'warning');
+            } else {
+                showToast('System ist aktuell', 'success');
+            }
+        });
+}
+
+function factoryReset() {
+    const confirmation = prompt('Zum Zurücksetzen auf Werkseinstellungen geben Sie "FACTORY RESET" ein:');
+    if (confirmation === 'FACTORY RESET') {
+        fetch('/api/factory_reset', {method: 'POST'})
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('System wird auf Werkseinstellungen zurückgesetzt...');
+                    setTimeout(() => location.href = '/login', 3000);
+                }
+            });
+    }
+}
+</script>
+{% endblock %}
