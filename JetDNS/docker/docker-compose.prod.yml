@@ -1,0 +1,210 @@
+version: '3.8'
+
+services:
+  jetdns-security:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.prod
+    container_name: jetdns-security
+    hostname: jetdns-security
+    restart: unless-stopped
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp" 
+      - "443:443/tcp"  # HTTPS Web Interface
+      - "853:853/tcp"  # DNS-over-TLS
+    volumes:
+      - jetdns_config:/etc/jetdns
+      - jetdns_data:/var/lib/jetdns
+      - jetdns_logs:/var/log/jetdns
+      - /etc/ssl/certs:/etc/ssl/certs:ro
+    environment:
+      - JETDNS_MODE=production
+      - JETDNS_LOG_LEVEL=INFO
+      - REDIS_URL=redis://redis:6379
+      - POSTGRES_URL=postgresql://jetdns:${POSTGRES_PASSWORD}@postgres:5432/jetdns
+    networks:
+      - jetdns_network
+    depends_on:
+      - redis
+      - postgres
+    healthcheck:
+      test: ["CMD", "dig", "@127.0.0.1", "health.check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
+        reservations:
+          memory: 512M
+          cpus: "0.5"
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: jetdns-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - jetdns_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: jetdns-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=jetdns
+      - POSTGRES_USER=jetdns
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - jetdns_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jetdns"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  threat-intelligence:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.threat-intel
+    container_name: jetdns-threat-intel
+    restart: unless-stopped
+    volumes:
+      - jetdns_config:/etc/jetdns:ro
+      - threat_data:/var/lib/threat-intelligence
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - UPDATE_INTERVAL=3600
+    networks:
+      - jetdns_network
+    depends_on:
+      - redis
+
+  ml-trainer:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ml
+    container_name: jetdns-ml-trainer
+    restart: unless-stopped
+    volumes:
+      - jetdns_data:/var/lib/jetdns
+      - ml_models:/var/lib/ml-models
+    environment:
+      - TRAINING_SCHEDULE=0 2 * * *  # Daily at 2 AM
+      - GPU_ENABLED=false
+    networks:
+      - jetdns_network
+    profiles:
+      - ml
+
+  monitoring:
+    image: prom/prometheus:latest
+    container_name: jetdns-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - jetdns_network
+    profiles:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: jetdns-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - jetdns_network
+    profiles:
+      - monitoring
+
+  nginx:
+    image: nginx:alpine
+    container_name: jetdns-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "8443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    networks:
+      - jetdns_network
+    depends_on:
+      - jetdns-security
+    profiles:
+      - proxy
+
+  backup:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backup
+    container_name: jetdns-backup
+    restart: unless-stopped
+    volumes:
+      - jetdns_data:/backup/data:ro
+      - jetdns_config:/backup/config:ro
+      - postgres_data:/backup/postgres:ro
+      - backup_storage:/backup/output
+    environment:
+      - BACKUP_SCHEDULE=0 1 * * *  # Daily at 1 AM
+      - RETENTION_DAYS=30
+      - S3_BUCKET=${BACKUP_S3_BUCKET}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    networks:
+      - jetdns_network
+    profiles:
+      - backup
+
+volumes:
+  jetdns_config:
+    driver: local
+  jetdns_data:
+    driver: local
+  jetdns_logs:
+    driver: local
+  redis_data:
+    driver: local
+  postgres_data:
+    driver: local
+  threat_data:
+    driver: local
+  ml_models:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  backup_storage:
+    driver: local
+
+networks:
+  jetdns_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

@@ -1,0 +1,48 @@
+# JetDNS Security Requirements
+# Core DNS functionality
+dnspython==2.4.2
+dnslib==0.9.23
+
+# Web framework and interface
+Flask==2.3.3
+Flask-SocketIO==5.3.6
+python-socketio==5.8.0
+
+# Data processing and ML
+numpy==1.24.3
+pandas==1.5.3
+scikit-learn==1.3.0
+scipy==1.11.1
+matplotlib==3.7.2
+
+# Text processing and similarity
+textdistance==4.6.0
+python-Levenshtein==0.21.1
+fuzzywuzzy==0.18.0
+nltk==3.8.1
+
+# Security and encryption
+cryptography==41.0.4
+bcrypt==4.0.1
+
+# Database and caching
+redis==4.6.0
+sqlite3
+
+# Configuration and logging
+PyYAML==6.0.1
+python-dotenv==1.0.0
+
+# Network and monitoring
+psutil==5.9.5
+requests==2.31.0
+
+# Development and testing
+pytest==7.4.0
+pytest-cov==4.1.0
+black==23.7.0
+flake8==6.0.0
+
+# Optional ML libraries
+torch==2.0.1
+transformers==4.21.3
